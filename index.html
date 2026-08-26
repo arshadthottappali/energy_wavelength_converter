@@ -58,7 +58,8 @@
     "Reverse conversion from energy or wavenumber back to wavelength",
     "Reference table of common laser wavelengths",
     "CSV export of conversion results",
-    "Spectrum viewer supporting both absorption and steady-state fluorescence spectra, multiple overlaid or waterfall-offset traces, CSV upload or paste (including multi-sample wide-format files), a colorblind-safe palette, customizable title/axes/gridlines/background/closed-box frame, and PNG/SVG/CSV export including a combined CSV of exactly what's shown on screen",
+    "Spectrum viewer supporting both absorption and steady-state fluorescence spectra, multiple overlaid or waterfall-offset traces, CSV upload or paste (including multi-sample wide-format files), a colorblind-safe palette, per-trace solid/dashed/dotted line styles, customizable title/axes/gridlines/background/closed-box frame, and PNG/SVG/CSV export including a combined CSV of exactly what's shown on screen",
+    "Save and reload an entire chart session as a local .json project file, entirely client-side with no account or server",
     "One-click removal of all loaded spectra"
   ]
 }
@@ -172,6 +173,14 @@
       "acceptedAnswer": {
         "@type": "Answer",
         "text": "Yes. \"Download data (CSV)\" exports a single file containing only the currently visible spectra, with any Y offset applied and cropped to the current X-axis range if you've set custom min/max values — matching what's actually drawn rather than the raw uploaded data."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I save my chart and reopen it later without re-uploading files?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. \"Save project (.json)\" downloads every loaded spectrum plus your title, axis, background, and frame settings as a single local file. \"Load project\" reads that file straight back into the chart later, on any device, with no account or server involved — the whole round trip happens in your browser."
       }
     }
   ]
@@ -288,6 +297,11 @@
             <button type="button" id="spectra-png-btn" class="btn btn-secondary">Download chart (PNG)</button>
             <button type="button" id="spectra-svg-btn" class="btn btn-secondary">Download chart (SVG)</button>
             <button type="button" id="spectra-data-btn" class="btn btn-secondary">Download data (CSV)</button>
+            <button type="button" id="spectra-save-project-btn" class="btn btn-secondary">Save project (.json)</button>
+            <label class="file-btn">
+              Load project
+              <input type="file" id="spectra-load-project-input" accept=".json,application/json" hidden>
+            </label>
             <button type="button" id="spectra-clear-btn" class="btn btn-secondary spectra-remove-btn">Clear all</button>
           </div>
 
@@ -342,7 +356,7 @@
 
           <div class="chart-settings-group">
             <p class="chart-settings-group-label">X axis</p>
-            <div class="field-grid chart-settings-grid">
+            <div class="field-grid chart-settings-grid chart-settings-grid-3col">
               <label class="field">
                 <span>X min</span>
                 <input type="number" id="spectra-xmin" placeholder="auto" step="any">
@@ -363,7 +377,7 @@
 
           <div class="chart-settings-group">
             <p class="chart-settings-group-label">Y axis</p>
-            <div class="field-grid chart-settings-grid">
+            <div class="field-grid chart-settings-grid chart-settings-grid-3col">
               <label class="field">
                 <span>Y min</span>
                 <input type="number" id="spectra-ymin" placeholder="auto" step="any">
@@ -427,6 +441,14 @@
               <option value="min">Divide by min</option>
               <option value="minmax">To 0–1</option>
               <option value="area">Unit area</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Line style</span>
+            <select data-role="line-style">
+              <option value="solid">Solid</option>
+              <option value="dashed">Dashed</option>
+              <option value="dotted">Dotted</option>
             </select>
           </label>
           <label class="spectra-checkbox-field">
@@ -562,6 +584,10 @@
     <div class="faq-item">
       <h3>Can I download the data exactly as shown on the chart?</h3>
       <p>Yes — "Download data (CSV)" exports only the currently visible spectra, with offsets applied and cropped to any custom X-axis range you've set.</p>
+    </div>
+    <div class="faq-item">
+      <h3>Can I save my chart and reopen it later without re-uploading files?</h3>
+      <p>Yes — "Save project (.json)" downloads every loaded spectrum plus your chart settings as one local file; "Load project" reads it straight back in later, on any device, with no account or server involved.</p>
     </div>
   </section>
 

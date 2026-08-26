@@ -557,10 +557,14 @@ td:first-child {
 
 .spectra-top-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-columns: minmax(0, 1fr) 400px;
   gap: 1.5rem;
   align-items: start;
   margin-bottom: 1.25rem;
+}
+
+.chart-settings-grid-3col {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 @media (max-width: 1000px) {

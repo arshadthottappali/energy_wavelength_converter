@@ -153,6 +153,8 @@
   var dataBtn = document.getElementById("spectra-data-btn");
   var clearBtn = document.getElementById("spectra-clear-btn");
   var globalUploadInput = document.getElementById("spectra-upload-input");
+  var saveProjectBtn = document.getElementById("spectra-save-project-btn");
+  var loadProjectInput = document.getElementById("spectra-load-project-input");
 
   var titleInput = document.getElementById("spectra-title");
   var bgModeSelect = document.getElementById("spectra-bg-mode");
@@ -285,6 +287,12 @@
 
   function displayY(ds) {
     return normalizeSeries(ds.y, ds.xNm, ds.normalize).map(function (v) { return v + ds.offset; });
+  }
+
+  function dashArrayFor(style) {
+    if (style === "dashed") return [8, 5];
+    if (style === "dotted") return [2, 4];
+    return [];
   }
 
   function niceNum(range, round) {
@@ -595,7 +603,9 @@
       });
       ctx.strokeStyle = d.color;
       ctx.lineWidth = 2;
+      ctx.setLineDash(dashArrayFor(d.lineStyle));
       ctx.stroke();
+      ctx.setLineDash([]);
 
       ctx.lineTo(L.xPix(convertFromNm(d.xNm[d.xNm.length - 1], L.bottomUnit)), L.bottom);
       ctx.lineTo(L.xPix(convertFromNm(d.xNm[0], L.bottomUnit)), L.bottom);
@@ -619,10 +629,12 @@
       ctx.globalAlpha = 1;
       ctx.strokeStyle = d.color;
       ctx.lineWidth = 2;
+      ctx.setLineDash(dashArrayFor(d.lineStyle));
       ctx.beginPath();
       ctx.moveTo(bx + 6, by + 10);
       ctx.lineTo(bx + 20, by + 10);
       ctx.stroke();
+      ctx.setLineDash([]);
       ctx.fillStyle = theme.strongText;
       ctx.textAlign = "left";
       ctx.textBaseline = "middle";
@@ -695,8 +707,10 @@
       var fillPts = linePts +
         " " + L.xPix(convertFromNm(d.xNm[d.xNm.length - 1], L.bottomUnit)) + "," + L.bottom +
         " " + L.xPix(convertFromNm(d.xNm[0], L.bottomUnit)) + "," + L.bottom;
+      var dash = dashArrayFor(d.lineStyle);
+      var dashAttr = dash.length ? ' stroke-dasharray="' + dash.join(",") + '"' : "";
       parts.push('<polygon points="' + fillPts + '" fill="' + d.color + '" fill-opacity="0.1"/>');
-      parts.push('<polyline points="' + linePts + '" fill="none" stroke="' + d.color + '" stroke-width="2"/>');
+      parts.push('<polyline points="' + linePts + '" fill="none" stroke="' + d.color + '" stroke-width="2"' + dashAttr + '/>');
     });
     parts.push('</g>');
 
@@ -705,8 +719,10 @@
       var legendText = (d.label && d.label.trim()) || "Spectrum";
       var boxW = legendChipWidth(measureCtx, legendText, "11px " + fontFamily);
       var bx = L.right - boxW - 6, by = chipY;
+      var legendDash = dashArrayFor(d.lineStyle);
+      var legendDashAttr = legendDash.length ? ' stroke-dasharray="' + legendDash.join(",") + '"' : "";
       parts.push('<rect x="' + bx + '" y="' + by + '" width="' + boxW + '" height="20" fill="' + theme.bgElev + '" fill-opacity="0.85"/>');
-      parts.push('<line x1="' + (bx + 6) + '" y1="' + (by + 10) + '" x2="' + (bx + 20) + '" y2="' + (by + 10) + '" stroke="' + d.color + '" stroke-width="2"/>');
+      parts.push('<line x1="' + (bx + 6) + '" y1="' + (by + 10) + '" x2="' + (bx + 20) + '" y2="' + (by + 10) + '" stroke="' + d.color + '" stroke-width="2"' + legendDashAttr + '/>');
       parts.push('<text x="' + (bx + 26) + '" y="' + (by + 10) + '" dominant-baseline="middle" fill="' + theme.strongText + '" font-size="11">' + escapeHtml(legendText) + '</text>');
       chipY += 24;
     });
@@ -798,6 +814,7 @@
     rows = rows.slice().sort(function (a, b) { return a[0] - b[0]; });
     var xNm = rows.map(function (r) { return convertToNm(r[0], col1Unit); });
     var labels = [];
+    var touchedIds = [];
 
     for (var col = 1; col < numCols; col++) {
       var y = rows.map(function (r) { return r[col]; });
@@ -816,10 +833,13 @@
       targetDs.y = y;
       targetDs.colUnit = col1Unit;
       targetDs.source = source;
+      touchedIds.push(targetDs.id);
       var legendEl = targetRow.querySelector('[data-role="legend"]');
       if (!legendEl.value.trim()) legendEl.value = label;
       targetDs.label = legendEl.value;
     }
+
+    removeStaleExampleRows(touchedIds);
 
     var msg = numCols > 2
       ? "Loaded " + (numCols - 1) + " spectra from " + sourceLabel + " (" + labels.join(", ") + "), " + rows.length + " points each."
@@ -841,6 +861,7 @@
       paletteIndex: idx % OKABE_ITO.length,
       offset: 0,
       normalize: "none",
+      lineStyle: "solid",
       visible: true,
       colUnit: "nm",
       source: null
@@ -854,9 +875,21 @@
     if (idx !== -1) datasets.splice(idx, 1);
   }
 
+  function removeStaleExampleRows(excludeIds) {
+    datasets.slice().forEach(function (d) {
+      if (d.source === "example" && excludeIds.indexOf(d.id) === -1) {
+        var staleRow = datasetsContainer.querySelector('[data-ds-id="' + d.id + '"]');
+        removeDataset(d);
+        if (staleRow) staleRow.remove();
+      }
+    });
+    if (!datasets.length) setStatus("No spectra loaded.", false);
+  }
+
   function createDatasetRow(ds) {
     var frag = rowTemplate.content.cloneNode(true);
     var row = frag.querySelector(".spectra-dataset-row");
+    row.dataset.dsId = ds.id;
 
     var colorInput = row.querySelector('[data-role="color"]');
     var legendInput = row.querySelector('[data-role="legend"]');
@@ -868,11 +901,13 @@
     var colUnitSelect = row.querySelector('[data-role="col-unit"]');
     var offsetInput = row.querySelector('[data-role="offset"]');
     var normalizeSelect = row.querySelector('[data-role="normalize"]');
+    var lineStyleSelect = row.querySelector('[data-role="line-style"]');
     var visibleInput = row.querySelector('[data-role="visible"]');
     var downloadBtn = row.querySelector('[data-role="download-btn"]');
     var removeBtn = row.querySelector('[data-role="remove-btn"]');
 
     colorInput.value = ds.color;
+    lineStyleSelect.value = ds.lineStyle;
 
     function applyLoadResult(result, defaultLabel) {
       if (!result.ok) { setRowStatus(row, result.msg, true); return; }
@@ -939,6 +974,11 @@
 
     normalizeSelect.addEventListener("change", function () {
       ds.normalize = normalizeSelect.value;
+      draw();
+    });
+
+    lineStyleSelect.addEventListener("change", function () {
+      ds.lineStyle = lineStyleSelect.value;
       draw();
     });
 
@@ -1070,6 +1110,95 @@
     rowFileInput.files = dt.files;
     rowFileInput.dispatchEvent(new Event("change"));
     globalUploadInput.value = "";
+  });
+
+  saveProjectBtn.addEventListener("click", function () {
+    var project = {
+      version: 1,
+      spectrumMode: spectrumMode,
+      axisUnit: axisUnitSelect.value,
+      custom: custom,
+      datasets: datasets.map(function (d) {
+        return {
+          label: d.label, color: d.color, colorAuto: d.colorAuto, paletteIndex: d.paletteIndex,
+          offset: d.offset, normalize: d.normalize, lineStyle: d.lineStyle, visible: d.visible,
+          colUnit: d.colUnit, source: d.source, xNm: d.xNm, y: d.y
+        };
+      })
+    };
+    downloadBlob("spectrawave-project.json", new Blob([JSON.stringify(project)], { type: "application/json;charset=utf-8;" }));
+  });
+
+  loadProjectInput.addEventListener("change", function () {
+    var file = loadProjectInput.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      var project;
+      try {
+        project = JSON.parse(String(reader.result));
+      } catch (e) {
+        setStatus("Couldn't read that project file.", true);
+        return;
+      }
+      if (!project || !Array.isArray(project.datasets)) {
+        setStatus("That doesn't look like a SpectraWave project file.", true);
+        return;
+      }
+
+      datasets.length = 0;
+      datasetsContainer.innerHTML = "";
+
+      var c = project.custom || {};
+      titleInput.value = c.title || "";
+      bgModeSelect.value = c.bgMode || "transparent";
+      bgCustomInput.value = c.bgCustomColor || "#ffffff";
+      bgCustomWrap.hidden = bgModeSelect.value !== "custom";
+      closedBoxInput.checked = c.closedBox !== false;
+      xGridInput.checked = c.showXGrid !== false;
+      yGridInput.checked = c.showYGrid !== false;
+      xMinInput.value = c.xMin != null ? c.xMin : "";
+      xMaxInput.value = c.xMax != null ? c.xMax : "";
+      xStepInput.value = c.xStep != null ? c.xStep : "";
+      yMinInput.value = c.yMin != null ? c.yMin : "";
+      yMaxInput.value = c.yMax != null ? c.yMax : "";
+      yStepInput.value = c.yStep != null ? c.yStep : "";
+      readCustom();
+
+      spectrumMode = project.spectrumMode === "fluorescence" ? "fluorescence" : "absorption";
+      modeSelect.value = spectrumMode;
+      if (project.axisUnit) axisUnitSelect.value = project.axisUnit;
+
+      project.datasets.forEach(function (saved) {
+        var added = addDataset();
+        var ds = added.ds, row = added.row;
+        ds.xNm = saved.xNm || [];
+        ds.y = saved.y || [];
+        ds.label = saved.label || "";
+        ds.color = saved.color || ds.color;
+        ds.colorAuto = !!saved.colorAuto;
+        ds.offset = saved.offset || 0;
+        ds.normalize = saved.normalize || "none";
+        ds.lineStyle = saved.lineStyle || "solid";
+        ds.visible = saved.visible !== false;
+        ds.colUnit = saved.colUnit || "nm";
+        ds.source = saved.source || null;
+
+        row.querySelector('[data-role="color"]').value = ds.color;
+        row.querySelector('[data-role="legend"]').value = ds.label;
+        row.querySelector('[data-role="col-unit"]').value = ds.colUnit;
+        row.querySelector('[data-role="offset"]').value = ds.offset;
+        row.querySelector('[data-role="normalize"]').value = ds.normalize;
+        row.querySelector('[data-role="line-style"]').value = ds.lineStyle;
+        row.querySelector('[data-role="visible"]').checked = ds.visible;
+      });
+
+      setStatus("Loaded project (" + datasets.length + " spectra).", false);
+      loadProjectInput.value = "";
+      draw();
+    };
+    reader.onerror = function () { setStatus("Could not read that file.", true); };
+    reader.readAsText(file);
   });
 
   clearBtn.addEventListener("click", function () {

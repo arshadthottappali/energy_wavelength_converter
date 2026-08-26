@@ -35,10 +35,12 @@ A client-side, multi-trace spectrum plotter with paired wavelength/energy axes (
 - "Spectrum type" toggle switches between absorption and steady-state fluorescence — the Y axis relabels to Fluorescence Intensity (a.u.) and the illustrative example switches to a Stokes-shifted emission curve; every other feature works identically in both modes.
 - Load multiple spectra and overlay them, or give each an independent Y offset to stack them waterfall-style.
 - Load data via the built-in illustrative example, CSV upload, or pasting columns copied straight from a spreadsheet — a wide-format file (wavelength plus several sample columns) automatically splits into one spectrum per column.
-- New spectra are auto-assigned colors from the colorblind-safe Okabe-Ito palette, overridable per trace with a color picker.
+- New spectra are auto-assigned colors from the colorblind-safe Okabe-Ito palette, overridable per trace with a color picker, and each trace can be drawn solid, dashed, or dotted (useful for figures that will be printed in grayscale).
 - Customizable chart title, per-trace legend labels, X/Y axis min/max/tick step, independent X/Y gridline toggles, background color (transparent/white/theme/custom), and a closed axis box (top/right border + mirrored ticks, on by default) matching the GraphPad Prism convention.
 - The chart canvas stays pinned (sticky) while scrolling through the data rows and settings below it, so edits show live without losing sight of the plot.
+- Uploading or pasting real data automatically removes the leftover illustrative example spectrum, so it never lingers alongside real traces.
 - Export the chart as a vector SVG (for Illustrator/Inkscape) or PNG, export each spectrum's raw underlying data as CSV converted to nm/eV/cm⁻¹, or export a single combined CSV of exactly what's currently visible on screen (respecting hidden traces, Y offsets, and any custom X-axis crop). "Clear all" removes every loaded spectrum at once.
+- "Save project (.json)" downloads every loaded spectrum plus all chart settings as one local file; "Load project" reads it straight back in later, on any device — a complete save/reopen workflow with no account or server involved.
 
 No account or upload to a server is required for any of this.
 
