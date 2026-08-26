@@ -290,6 +290,28 @@
             <button type="button" id="spectra-data-btn" class="btn btn-secondary">Download data (CSV)</button>
             <button type="button" id="spectra-clear-btn" class="btn btn-secondary spectra-remove-btn">Clear all</button>
           </div>
+
+          <div class="spectra-global-controls">
+            <label class="field">
+              <span>Spectrum type</span>
+              <select id="spectra-mode">
+                <option value="absorption">Absorption</option>
+                <option value="fluorescence">Fluorescence (steady-state)</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>X-axis unit</span>
+              <select id="spectra-axis-unit">
+                <option value="nm">Wavelength (nm)</option>
+                <option value="eV">Energy (eV)</option>
+                <option value="cm-1">Wavenumber (cm⁻¹)</option>
+              </select>
+            </label>
+          </div>
+
+          <div id="spectra-datasets" class="spectra-datasets"></div>
+          <button type="button" id="spectra-add-dataset-btn" class="btn btn-secondary spectra-add-btn">+ Add spectrum</button>
+          <p class="hint">Each row loads one CSV or pasted block — but a file with wavelength in column 1 and several sample columns after it (e.g. multiple absorbance readings) automatically expands into one spectrum per column, each in its own row. Column headers, if present, become the legend labels. Every row also has its own CSV download (converted to the selected unit, offset excluded). The example spectrum is an illustrative curve for demonstration, not measured data.</p>
         </div>
 
         <details class="chart-settings" open>
@@ -372,28 +394,6 @@
           </div>
         </details>
       </div>
-
-      <div class="spectra-global-controls">
-        <label class="field">
-          <span>Spectrum type</span>
-          <select id="spectra-mode">
-            <option value="absorption">Absorption</option>
-            <option value="fluorescence">Fluorescence (steady-state)</option>
-          </select>
-        </label>
-        <label class="field">
-          <span>X-axis unit</span>
-          <select id="spectra-axis-unit">
-            <option value="nm">Wavelength (nm)</option>
-            <option value="eV">Energy (eV)</option>
-            <option value="cm-1">Wavenumber (cm⁻¹)</option>
-          </select>
-        </label>
-      </div>
-
-      <div id="spectra-datasets" class="spectra-datasets"></div>
-      <button type="button" id="spectra-add-dataset-btn" class="btn btn-secondary spectra-add-btn">+ Add spectrum</button>
-      <p class="hint">Each row loads one CSV or pasted block — but a file with wavelength in column 1 and several sample columns after it (e.g. multiple absorbance readings) automatically expands into one spectrum per column, each in its own row. Column headers, if present, become the legend labels. Every row also has its own CSV download (converted to the selected unit, offset excluded). The example spectrum is an illustrative curve for demonstration, not measured data.</p>
     </div>
 
     <template id="spectra-dataset-row-template">
