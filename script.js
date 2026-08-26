@@ -1535,11 +1535,17 @@
     }
   });
 
+  function findEmptyDataset() {
+    return datasets.find(function (d) { return !d.xNm.length; });
+  }
+
   globalUploadInput.addEventListener("change", function () {
     var file = globalUploadInput.files[0];
     if (!file) return;
-    var added = addDataset();
-    var rowFileInput = added.row.querySelector('[data-role="file-input"]');
+    var emptyDs = findEmptyDataset();
+    var targetRow = emptyDs ? datasetsContainer.querySelector('[data-ds-id="' + emptyDs.id + '"]') : null;
+    if (!targetRow) targetRow = addDataset().row;
+    var rowFileInput = targetRow.querySelector('[data-role="file-input"]');
     var dt = new DataTransfer();
     dt.items.add(file);
     rowFileInput.files = dt.files;
