@@ -3,25 +3,33 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Laser Wavelength to Energy Converter | nm ↔ eV ↔ cm⁻¹ ↔ THz</title>
-<meta name="description" content="Free online laser wavelength converter. Instantly convert between wavelength (nm), photon energy (eV, J), wavenumber (cm⁻¹), and frequency (THz). Includes a reference table for common lasers (HeNe, Nd:YAG, CO2, excimer) and CSV export.">
-<meta name="keywords" content="wavelength to energy converter, nm to eV, wavelength to wavenumber, energy to wavelength calculator, laser wavelength calculator, photon energy calculator, eV to nm, cm-1 to eV, frequency to wavelength converter">
-<meta name="author" content="Energy Wavelength Converter">
-<link rel="canonical" href="https://energy-wavelength-converter.vercel.app/">
+<title>SpectraWave — Wavelength, Energy &amp; Absorption Spectrum Tools</title>
+<meta name="description" content="Free browser-based wavelength-to-energy converter and absorption spectrum plotter for researchers: multi-spectra overlay, waterfall offsets, colorblind-safe colors, closed-box axes, and SVG/PNG export. No login, nothing uploaded.">
+<meta name="keywords" content="wavelength to energy converter, absorption spectrum plotter, nm to eV, spectroscopy graphing tool, waterfall plot spectra, colorblind safe scientific plot colors, SVG chart export, GraphPad Prism alternative free, closed box axis plot, free online spectrum tool for researchers">
+<meta name="author" content="SpectraWave">
+<link rel="canonical" href="https://spectrawave.vercel.app/">
 <meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="theme-color" content="#0b0e14" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f8fa" media="(prefers-color-scheme: light)">
 
 <!-- Open Graph -->
 <meta property="og:type" content="website">
-<meta property="og:title" content="Laser Wavelength to Energy Converter | nm ↔ eV ↔ cm⁻¹ ↔ THz">
-<meta property="og:description" content="Convert laser wavelength to photon energy, wavenumber, and frequency instantly. Free browser-based calculator with a common-laser reference table and CSV export.">
-<meta property="og:url" content="https://energy-wavelength-converter.vercel.app/">
-<meta property="og:site_name" content="Energy Wavelength Converter">
+<meta property="og:title" content="SpectraWave — Wavelength, Energy & Absorption Spectrum Tools">
+<meta property="og:description" content="Free browser-based wavelength-to-energy converter and absorption spectrum plotter for researchers: multi-spectra overlay, colorblind-safe colors, closed-box axes, and SVG/PNG export.">
+<meta property="og:url" content="https://spectrawave.vercel.app/">
+<meta property="og:site_name" content="SpectraWave">
 <meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://spectrawave.vercel.app/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:alt" content="SpectraWave — wavelength, energy and absorption spectrum tools">
 
 <!-- Twitter -->
-<meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Laser Wavelength to Energy Converter">
-<meta name="twitter:description" content="Convert wavelength (nm) to energy (eV), wavenumber (cm⁻¹), and frequency (THz) instantly in your browser.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="SpectraWave — Wavelength, Energy & Spectrum Tools">
+<meta name="twitter:description" content="Free wavelength-to-energy converter and absorption spectrum plotter for researchers. Multi-spectra overlay, colorblind-safe colors, SVG export.">
+<meta name="twitter:image" content="https://spectrawave.vercel.app/og-image.png">
 
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔬</text></svg>">
 <link rel="stylesheet" href="styles.css">
@@ -31,11 +39,17 @@
 {
   "@context": "https://schema.org",
   "@type": "WebApplication",
-  "name": "Laser Wavelength to Energy Converter",
-  "url": "https://energy-wavelength-converter.vercel.app/",
+  "name": "SpectraWave",
+  "alternateName": "Wavelength-Energy Converter & Absorption Spectrum Plotter",
+  "url": "https://spectrawave.vercel.app/",
   "applicationCategory": "UtilitiesApplication",
   "operatingSystem": "Any (runs in browser)",
-  "description": "A free, client-side calculator that converts laser and photon wavelength between nanometers, electron-volts, wavenumber, and frequency, with a built-in reference table for common laser sources.",
+  "description": "A free, client-side toolkit for spectroscopy and photonics researchers: converts wavelength, photon energy, wavenumber, and frequency, and plots multiple absorption spectra with waterfall offsets, a colorblind-safe palette, and publication-ready SVG/PNG export.",
+  "audience": {
+    "@type": "Audience",
+    "audienceType": "Researchers, graduate students, principal investigators, spectroscopists, photonics and laser engineers"
+  },
+  "keywords": "wavelength to energy converter, absorption spectrum plotter, spectroscopy graphing tool, waterfall plot, colorblind-safe palette, SVG export, closed-box axes",
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
   "featureList": [
     "Wavelength (nm) to energy (eV) conversion",
@@ -94,6 +108,83 @@
         "@type": "Answer",
         "text": "Wavelength in nanometers equals 1239.84198 divided by the energy in electron-volts: λ(nm) = 1239.84198 / E(eV). This is the same constant used in the forward conversion because the relationship is reciprocal."
       }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I compare multiple absorption spectra on one chart?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Click \"Add spectrum\" to overlay another trace on the same axes. Each spectrum gets its own auto-assigned colorblind-safe color and legend label, which you can override, and loads independently from an example curve, an uploaded CSV, or pasted data."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I make a waterfall-style stacked spectrum plot?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Give a spectrum a nonzero Y offset in its row's \"Y offset\" field. Overlapping curves shift vertically so multiple samples can be compared without obscuring each other, a common layout in spectroscopy papers with many traces."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I export an absorption spectrum as a vector SVG for a publication figure?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. \"Download chart (SVG)\" exports a vector file that opens cleanly in Illustrator, Inkscape, or Affinity Designer for further editing, in addition to the PNG raster export."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What is a colorblind-safe color palette and why does it matter for scientific figures?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "It's a set of colors chosen to remain distinguishable under common forms of color vision deficiency, such as the widely used Okabe-Ito 8-color palette. Journal editors repeatedly cite poor color choices as one of the most common figure-quality problems in submitted papers, so new spectra are auto-assigned colors from this palette by default (still overridable per trace)."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I add a closed axis box like GraphPad Prism to my plot?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Open \"Customize chart\" and check \"Closed axis box.\" This draws the top and right border lines plus mirrored tick marks on the right edge, matching the GraphPad Prism convention many biology and chemistry journals expect, instead of the open-box matplotlib-style default."
+      }
+    }
+  ]
+}
+</script>
+
+<!-- JSON-LD: HowTo for GEO / AI answer engines -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  "name": "How to Export a Publication-Ready Absorption Spectrum",
+  "description": "Steps to plot, style, and export a multi-trace absorption spectrum figure suitable for a paper or presentation using SpectraWave.",
+  "step": [
+    {
+      "@type": "HowToStep",
+      "name": "Load your data",
+      "text": "Click \"Add spectrum\" and either load the illustrative example, upload a two-column CSV, or paste two columns copied from Excel (wavelength, energy, or wavenumber, plus absorbance)."
+    },
+    {
+      "@type": "HowToStep",
+      "name": "Compare multiple spectra",
+      "text": "Add more spectra to overlay them on the same axes, or give each one a Y offset to stack them waterfall-style for readability."
+    },
+    {
+      "@type": "HowToStep",
+      "name": "Style the chart",
+      "text": "Set a chart title, per-trace legend labels and colors, and adjust the X/Y axis range and tick spacing under \"Customize chart.\""
+    },
+    {
+      "@type": "HowToStep",
+      "name": "Match your journal's figure convention",
+      "text": "Choose a background color (white or custom) and toggle the closed axis box if your target journal or software, such as GraphPad Prism, expects a full frame with tick marks on all sides."
+    },
+    {
+      "@type": "HowToStep",
+      "name": "Export",
+      "text": "Download the chart as a vector SVG for editing in Illustrator or Inkscape, a PNG for slides, or per-spectrum CSV data converted to your unit of choice."
     }
   ]
 }
@@ -103,8 +194,8 @@
 
 <header class="site-header">
   <div class="wrap">
-    <h1>Laser Wavelength ↔ Energy Converter</h1>
-    <p class="tagline">Convert wavelength to energy (eV), wavenumber (cm⁻¹) &amp; frequency (THz) — instantly, in your browser.</p>
+    <h1>SpectraWave — Wavelength ↔ Energy Converter &amp; Spectrum Plotter</h1>
+    <p class="tagline">Convert wavelength, energy &amp; wavenumber, then plot multi-trace absorption spectra — free, in your browser.</p>
   </div>
 </header>
 
@@ -335,6 +426,12 @@
 
     <h3>Common use cases</h3>
     <p>Typical searches this tool answers include converting a 532 nm green laser to its energy in eV, finding the wavenumber equivalent of a 10.6 µm CO₂ laser line, checking the frequency of a 1550 nm telecom laser, or working backward from a semiconductor bandgap in eV to the corresponding absorption edge wavelength in nm. The reference table above already includes pre-calculated values for the most frequently cited laser sources — HeNe, Nd:YAG and its harmonics, excimer lasers, Ti:Sapphire, and CO₂ — so many lookups won't even require typing a number into the calculator.</p>
+
+    <h3>How to make a publication-ready absorption spectrum figure</h3>
+    <p>Load one or more spectra into the viewer above — the illustrative example, an uploaded CSV, or two columns pasted straight from a spreadsheet — then add more spectra to overlay them for comparison, or give each one a Y offset to stack them waterfall-style when curves overlap too much to read. Set a chart title and per-trace legend labels, pick a background (white for pasting into a manuscript, transparent for slides, or a custom color), and toggle the closed axis box if your target journal follows the GraphPad Prism convention of a full frame with tick marks on all sides rather than the open matplotlib-style default. When it looks right, download it as a vector SVG for further editing in Illustrator or Inkscape, a PNG for a slide deck, or the underlying data as CSV in whichever unit you need.</p>
+
+    <h3>Built around real researcher pain points</h3>
+    <p>Beyond unit conversion, this tool's spectrum viewer was shaped by common complaints about scientific plotting software: journal editors repeatedly flag poor, inaccessible color choices as a top figure-quality problem, so new spectra are auto-assigned colors from the colorblind-safe Okabe-Ito palette by default. "Just getting data into the tool" is a widely cited annoyance, so pasting two columns copied from Excel works exactly like uploading a CSV. And because many labs still need a vector file for a journal's figure requirements, SVG export sits right next to PNG — not an afterthought.</p>
   </section>
 
   <section id="faq" aria-labelledby="faq-heading">
@@ -355,13 +452,33 @@
       <h3>How do you convert energy in eV back to wavelength in nm?</h3>
       <p>λ(nm) = 1239.84198 / E(eV) — the same constant, applied in reverse.</p>
     </div>
+    <div class="faq-item">
+      <h3>How do I compare multiple absorption spectra on one chart?</h3>
+      <p>Click "Add spectrum" to overlay another trace with its own auto-assigned color and legend label, loaded from an example, an uploaded CSV, or pasted data.</p>
+    </div>
+    <div class="faq-item">
+      <h3>How do I make a waterfall-style stacked spectrum plot?</h3>
+      <p>Set a nonzero Y offset in a spectrum's row so overlapping curves shift vertically apart for readability.</p>
+    </div>
+    <div class="faq-item">
+      <h3>Can I export a spectrum as a vector SVG for a publication figure?</h3>
+      <p>Yes — "Download chart (SVG)" exports a vector file that opens cleanly in Illustrator or Inkscape, alongside the PNG export.</p>
+    </div>
+    <div class="faq-item">
+      <h3>What is a colorblind-safe palette and why does it matter?</h3>
+      <p>A set of colors, like the Okabe-Ito 8-color palette, that stay distinguishable under common color vision deficiencies — poor color choices are one of editors' most-cited figure-quality complaints, so new spectra use this palette by default.</p>
+    </div>
+    <div class="faq-item">
+      <h3>How do I add a closed axis box like GraphPad Prism?</h3>
+      <p>Open "Customize chart" and check "Closed axis box" to add the top/right border and mirrored tick marks, matching the convention many biology and chemistry journals expect.</p>
+    </div>
   </section>
 
 </main>
 
 <footer class="site-footer">
   <div class="wrap">
-    <p>All calculations run locally in your browser. No wavelength or energy data is transmitted or stored. &middot; hc = 1239.84198 eV·nm, c = 299792458 m/s</p>
+    <p>SpectraWave runs entirely in your browser. No wavelength, energy, or spectrum data is transmitted or stored. &middot; hc = 1239.84198 eV·nm, c = 299792458 m/s</p>
   </div>
 </footer>
 

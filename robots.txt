@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://energy-wavelength-converter.vercel.app/sitemap.xml
+Sitemap: https://spectrawave.vercel.app/sitemap.xml
