@@ -155,6 +155,9 @@
   var globalUploadInput = document.getElementById("spectra-upload-input");
   var saveProjectBtn = document.getElementById("spectra-save-project-btn");
   var loadProjectInput = document.getElementById("spectra-load-project-input");
+  var shareGroupEl = document.getElementById("spectra-share-group");
+  var shareModeSelect = document.getElementById("spectra-share-mode");
+  var shareBtn = document.getElementById("spectra-share-btn");
 
   var folderTreeEl = document.getElementById("spectra-folder-tree");
   var newFolderBtn = document.getElementById("spectra-new-folder-btn");
@@ -176,6 +179,11 @@
   var yMaxInput = document.getElementById("spectra-ymax");
   var yStepInput = document.getElementById("spectra-ystep");
   var resetAxesBtn = document.getElementById("spectra-reset-axes-btn");
+  var legendPositionSelect = document.getElementById("spectra-legend-position");
+  var xAxisLabelInput = document.getElementById("spectra-xaxis-label");
+  var yAxisLabelInput = document.getElementById("spectra-yaxis-label");
+  var xGridOpacityInput = document.getElementById("spectra-xgrid-opacity");
+  var yGridOpacityInput = document.getElementById("spectra-ygrid-opacity");
 
   var datasets = [];
   var datasetIdCounter = 0;
@@ -184,7 +192,9 @@
   function makeDefaultCustom() {
     return {
       title: "", xMin: null, xMax: null, xStep: null, yMin: null, yMax: null, yStep: null,
-      bgMode: "transparent", bgCustomColor: "#ffffff", closedBox: true, showXGrid: true, showYGrid: true
+      bgMode: "transparent", bgCustomColor: "#ffffff", closedBox: true, showXGrid: true, showYGrid: true,
+      xGridOpacity: 0.15, yGridOpacity: 0.5, legendPosition: "top-right",
+      xAxisLabelOverride: "", yAxisLabelOverride: ""
     };
   }
   var custom = makeDefaultCustom();
@@ -216,6 +226,11 @@
     custom.yMin = numOrNull(yMinInput);
     custom.yMax = numOrNull(yMaxInput);
     custom.yStep = numOrNull(yStepInput);
+    custom.xGridOpacity = xGridOpacityInput ? parseFloat(xGridOpacityInput.value) || 0 : custom.xGridOpacity;
+    custom.yGridOpacity = yGridOpacityInput ? parseFloat(yGridOpacityInput.value) || 0 : custom.yGridOpacity;
+    custom.legendPosition = legendPositionSelect ? legendPositionSelect.value : custom.legendPosition;
+    custom.xAxisLabelOverride = xAxisLabelInput ? xAxisLabelInput.value : custom.xAxisLabelOverride;
+    custom.yAxisLabelOverride = yAxisLabelInput ? yAxisLabelInput.value : custom.yAxisLabelOverride;
   }
 
   function escapeHtml(s) {
@@ -273,7 +288,13 @@
   }
 
   function yAxisTitle() {
+    if (custom.yAxisLabelOverride && custom.yAxisLabelOverride.trim()) return custom.yAxisLabelOverride.trim();
     return spectrumMode === "fluorescence" ? "Fluorescence Intensity (a.u.)" : "Absorbance (a.u.)";
+  }
+
+  function xAxisTitle(unit) {
+    if (custom.xAxisLabelOverride && custom.xAxisLabelOverride.trim()) return custom.xAxisLabelOverride.trim();
+    return unitLabel(unit);
   }
 
   function yValueLabel() {
@@ -304,6 +325,34 @@
 
   function displayY(ds) {
     return normalizeSeries(ds.y, ds.xNm, ds.normalize).map(function (v) { return v + ds.offset; });
+  }
+
+  function findPeaks(y, sensitivity) {
+    if (y.length < 3) return [];
+    var yMin = Math.min.apply(null, y), yMax = Math.max.apply(null, y);
+    var range = yMax - yMin || 1;
+    var minProminence = sensitivity * range * 0.5;
+    var peaks = [];
+    for (var i = 1; i < y.length - 1; i++) {
+      if (y[i] >= y[i - 1] && y[i] >= y[i + 1] && (y[i] > y[i - 1] || y[i] > y[i + 1])) {
+        var leftMin = y[i];
+        for (var l = i - 1; l >= 0; l--) {
+          if (y[l] > y[i]) break;
+          if (y[l] < leftMin) leftMin = y[l];
+        }
+        var rightMin = y[i];
+        for (var r = i + 1; r < y.length; r++) {
+          if (y[r] > y[i]) break;
+          if (y[r] < rightMin) rightMin = y[r];
+        }
+        var prominence = y[i] - Math.max(leftMin, rightMin);
+        if (prominence >= minProminence) {
+          peaks.push({ index: i, value: y[i], prominence: prominence });
+        }
+      }
+    }
+    peaks.sort(function (a, b) { return b.prominence - a.prominence; });
+    return peaks.slice(0, 10);
   }
 
   function dashArrayFor(style) {
@@ -341,36 +390,6 @@
       ticks.push(Math.round(v * 1e6) / 1e6);
     }
     return ticks;
-  }
-
-  function generateExampleSpectrum() {
-    var xNm = [], yRaw = [];
-    for (var nm = 380; nm <= 560; nm += 2) {
-      var main = Math.exp(-Math.pow(nm - 490, 2) / (2 * Math.pow(13, 2)));
-      var shoulder = 0.42 * Math.exp(-Math.pow(nm - 460, 2) / (2 * Math.pow(11, 2)));
-      xNm.push(nm);
-      yRaw.push(main + shoulder);
-    }
-    var max = Math.max.apply(null, yRaw);
-    var y = yRaw.map(function (v) { return Math.round((v / max) * 1000) / 1000; });
-    return { xNm: xNm, y: y, label: "fluorescein-example (illustrative)" };
-  }
-
-  function generateExampleEmissionSpectrum() {
-    var xNm = [], yRaw = [];
-    for (var nm = 480; nm <= 650; nm += 2) {
-      var main = Math.exp(-Math.pow(nm - 513, 2) / (2 * Math.pow(15, 2)));
-      var tail = 0.28 * Math.exp(-Math.pow(nm - 555, 2) / (2 * Math.pow(28, 2)));
-      xNm.push(nm);
-      yRaw.push(main + tail);
-    }
-    var max = Math.max.apply(null, yRaw);
-    var y = yRaw.map(function (v) { return Math.round((v / max) * 1000) / 1000; });
-    return { xNm: xNm, y: y, label: "fluorescein-emission-example (illustrative)" };
-  }
-
-  function generateExample() {
-    return spectrumMode === "fluorescence" ? generateExampleEmissionSpectrum() : generateExampleSpectrum();
   }
 
   function setStatus(msg, isError) {
@@ -461,6 +480,37 @@
     var swatchW = 14, boxPad = 6;
     var textW = mctx.measureText(text).width;
     return swatchW + boxPad * 2 + textW + 6;
+  }
+
+  function computeLegendLayout(L, mctx, fontFamily, position) {
+    if (position === "hidden") return [];
+    var isLeft = position === "top-left" || position === "bottom-left";
+    var isBottom = position === "bottom-left" || position === "bottom-right";
+    var y = isBottom ? L.bottom - 26 : L.top + 6;
+    var step = isBottom ? -24 : 24;
+    return L.visible.map(function (d) {
+      var legendText = (d.label && d.label.trim()) || "Spectrum";
+      var boxW = legendChipWidth(mctx, legendText, "11px " + fontFamily);
+      var bx = isLeft ? L.left + 6 : L.right - boxW - 6;
+      var by = y;
+      y += step;
+      return { d: d, legendText: legendText, boxW: boxW, bx: bx, by: by };
+    });
+  }
+
+  function computePeakMarkers(L) {
+    var markers = [];
+    L.visible.forEach(function (d) {
+      var sel = d.selectedPeakIndices || [];
+      if (!sel.length) return;
+      var dy = displayY(d);
+      sel.forEach(function (idx) {
+        if (idx < 0 || idx >= d.xNm.length) return;
+        var xv = convertFromNm(d.xNm[idx], L.bottomUnit);
+        markers.push({ d: d, px: L.xPix(xv), py: L.yPix(dy[idx]), label: formatVal(xv, L.bottomUnit) });
+      });
+    });
+    return markers;
   }
 
   function computeChartLayout(width, height, dsList, bottomUnit, customSettings) {
@@ -569,7 +619,7 @@
         ctx.moveTo(L.left, t.px);
         ctx.lineTo(L.right, t.px);
         ctx.strokeStyle = theme.grid;
-        ctx.globalAlpha = 0.5;
+        ctx.globalAlpha = custom.yGridOpacity;
         ctx.stroke();
         ctx.globalAlpha = 1;
       }
@@ -594,7 +644,7 @@
         ctx.moveTo(t.px, L.top);
         ctx.lineTo(t.px, L.bottom);
         ctx.strokeStyle = theme.grid;
-        ctx.globalAlpha = 0.15;
+        ctx.globalAlpha = custom.xGridOpacity;
         ctx.stroke();
         ctx.globalAlpha = 1;
       }
@@ -631,7 +681,7 @@
     ctx.font = "12px " + fontFamily;
     ctx.textAlign = "center";
     ctx.textBaseline = "alphabetic";
-    ctx.fillText(unitLabel(L.bottomUnit), (L.left + L.right) / 2, height - 8);
+    ctx.fillText(xAxisTitle(L.bottomUnit), (L.left + L.right) / 2, height - 8);
     ctx.fillText(unitLabel(L.topUnit), (L.left + L.right) / 2, 32);
 
     ctx.save();
@@ -677,12 +727,24 @@
     });
     ctx.restore();
 
+    ctx.font = "10px " + fontFamily;
+    computePeakMarkers(L).forEach(function (m) {
+      ctx.beginPath();
+      ctx.moveTo(m.px, m.py - 6);
+      ctx.lineTo(m.px - 5, m.py - 14);
+      ctx.lineTo(m.px + 5, m.py - 14);
+      ctx.closePath();
+      ctx.fillStyle = m.d.color;
+      ctx.fill();
+      ctx.fillStyle = theme.strongText;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.fillText(m.label, m.px, m.py - 16);
+    });
+
     ctx.font = "11px " + fontFamily;
-    var chipY = L.top + 6;
-    L.visible.forEach(function (d) {
-      var legendText = (d.label && d.label.trim()) || "Spectrum";
-      var boxW = legendChipWidth(ctx, legendText, "11px " + fontFamily);
-      var bx = L.right - boxW - 6, by = chipY;
+    computeLegendLayout(L, ctx, fontFamily, custom.legendPosition).forEach(function (item) {
+      var d = item.d, bx = item.bx, by = item.by, boxW = item.boxW;
       ctx.fillStyle = theme.bgElev;
       ctx.globalAlpha = 0.85;
       ctx.fillRect(bx, by, boxW, 20);
@@ -698,8 +760,7 @@
       ctx.fillStyle = theme.strongText;
       ctx.textAlign = "left";
       ctx.textBaseline = "middle";
-      ctx.fillText(legendText, bx + 26, by + 10);
-      chipY += 24;
+      ctx.fillText(item.legendText, bx + 26, by + 10);
     });
   }
 
@@ -723,7 +784,7 @@
 
     L.yTicks.forEach(function (t) {
       if (customSettings.showYGrid) {
-        parts.push('<line x1="' + L.left + '" y1="' + t.px + '" x2="' + L.right + '" y2="' + t.px + '" stroke="' + theme.grid + '" stroke-opacity="0.5"/>');
+        parts.push('<line x1="' + L.left + '" y1="' + t.px + '" x2="' + L.right + '" y2="' + t.px + '" stroke="' + theme.grid + '" stroke-opacity="' + customSettings.yGridOpacity + '"/>');
       }
       parts.push('<text x="' + (L.left - 8) + '" y="' + t.px + '" text-anchor="end" dominant-baseline="middle" fill="' + theme.text + '" font-size="11">' + t.value.toFixed(2) + '</text>');
       if (customSettings.closedBox) {
@@ -733,7 +794,7 @@
 
     L.xTicks.forEach(function (t) {
       if (customSettings.showXGrid) {
-        parts.push('<line x1="' + t.px + '" y1="' + L.top + '" x2="' + t.px + '" y2="' + L.bottom + '" stroke="' + theme.grid + '" stroke-opacity="0.15"/>');
+        parts.push('<line x1="' + t.px + '" y1="' + L.top + '" x2="' + t.px + '" y2="' + L.bottom + '" stroke="' + theme.grid + '" stroke-opacity="' + customSettings.xGridOpacity + '"/>');
       }
       parts.push('<text x="' + t.px + '" y="' + (L.bottom + 8) + '" text-anchor="middle" dominant-baseline="hanging" fill="' + theme.text + '" font-size="11">' + escapeHtml(formatVal(t.value, L.bottomUnit)) + '</text>');
     });
@@ -747,7 +808,7 @@
     if (customSettings.closedBox) boxPath += " L" + L.right + " " + L.top + " L" + L.left + " " + L.top;
     parts.push('<path d="' + boxPath + '" fill="none" stroke="' + theme.grid + '"/>');
 
-    parts.push('<text x="' + ((L.left + L.right) / 2) + '" y="' + (height - 8) + '" text-anchor="middle" fill="' + theme.strongText + '" font-size="12">' + escapeHtml(unitLabel(L.bottomUnit)) + '</text>');
+    parts.push('<text x="' + ((L.left + L.right) / 2) + '" y="' + (height - 8) + '" text-anchor="middle" fill="' + theme.strongText + '" font-size="12">' + escapeHtml(xAxisTitle(L.bottomUnit)) + '</text>');
     parts.push('<text x="' + ((L.left + L.right) / 2) + '" y="32" text-anchor="middle" fill="' + theme.strongText + '" font-size="12">' + escapeHtml(unitLabel(L.topUnit)) + '</text>');
     parts.push('<text x="14" y="' + ((L.top + L.bottom) / 2) + '" text-anchor="middle" fill="' + theme.strongText + '" font-size="12" transform="rotate(-90 14 ' + ((L.top + L.bottom) / 2) + ')">' + escapeHtml(yAxisTitle()) + '</text>');
 
@@ -774,17 +835,18 @@
     });
     parts.push('</g>');
 
-    var chipY = L.top + 6;
-    L.visible.forEach(function (d) {
-      var legendText = (d.label && d.label.trim()) || "Spectrum";
-      var boxW = legendChipWidth(measureCtx, legendText, "11px " + fontFamily);
-      var bx = L.right - boxW - 6, by = chipY;
+    computePeakMarkers(L).forEach(function (m) {
+      parts.push('<polygon points="' + m.px + ',' + (m.py - 6) + ' ' + (m.px - 5) + ',' + (m.py - 14) + ' ' + (m.px + 5) + ',' + (m.py - 14) + '" fill="' + m.d.color + '"/>');
+      parts.push('<text x="' + m.px + '" y="' + (m.py - 16) + '" text-anchor="middle" fill="' + theme.strongText + '" font-size="10">' + escapeHtml(m.label) + '</text>');
+    });
+
+    computeLegendLayout(L, measureCtx, fontFamily, customSettings.legendPosition).forEach(function (item) {
+      var d = item.d, bx = item.bx, by = item.by, boxW = item.boxW;
       var legendDash = dashArrayFor(d.lineStyle);
       var legendDashAttr = legendDash.length ? ' stroke-dasharray="' + legendDash.join(",") + '"' : "";
       parts.push('<rect x="' + bx + '" y="' + by + '" width="' + boxW + '" height="20" fill="' + theme.bgElev + '" fill-opacity="0.85"/>');
       parts.push('<line x1="' + (bx + 6) + '" y1="' + (by + 10) + '" x2="' + (bx + 20) + '" y2="' + (by + 10) + '" stroke="' + d.color + '" stroke-width="2"' + legendDashAttr + '/>');
-      parts.push('<text x="' + (bx + 26) + '" y="' + (by + 10) + '" dominant-baseline="middle" fill="' + theme.strongText + '" font-size="11">' + escapeHtml(legendText) + '</text>');
-      chipY += 24;
+      parts.push('<text x="' + (bx + 26) + '" y="' + (by + 10) + '" dominant-baseline="middle" fill="' + theme.strongText + '" font-size="11">' + escapeHtml(item.legendText) + '</text>');
     });
 
     parts.push('</svg>');
@@ -874,7 +936,6 @@
     rows = rows.slice().sort(function (a, b) { return a[0] - b[0]; });
     var xNm = rows.map(function (r) { return convertToNm(r[0], col1Unit); });
     var labels = [];
-    var touchedIds = [];
 
     for (var col = 1; col < numCols; col++) {
       var y = rows.map(function (r) { return r[col]; });
@@ -893,13 +954,10 @@
       targetDs.y = y;
       targetDs.colUnit = col1Unit;
       targetDs.source = source;
-      touchedIds.push(targetDs.id);
       var legendEl = targetRow.querySelector('[data-role="legend"]');
       if (!legendEl.value.trim()) legendEl.value = label;
       targetDs.label = legendEl.value;
     }
-
-    removeStaleExampleRows(touchedIds);
 
     var msg = numCols > 2
       ? "Loaded " + (numCols - 1) + " spectra from " + sourceLabel + " (" + labels.join(", ") + "), " + rows.length + " points each."
@@ -924,7 +982,8 @@
       lineStyle: "solid",
       visible: true,
       colUnit: "nm",
-      source: null
+      source: null,
+      selectedPeakIndices: []
     };
     datasets.push(ds);
     return ds;
@@ -933,17 +992,6 @@
   function removeDataset(ds) {
     var idx = datasets.indexOf(ds);
     if (idx !== -1) datasets.splice(idx, 1);
-  }
-
-  function removeStaleExampleRows(excludeIds) {
-    datasets.slice().forEach(function (d) {
-      if (d.source === "example" && excludeIds.indexOf(d.id) === -1) {
-        var staleRow = datasetsContainer.querySelector('[data-ds-id="' + d.id + '"]');
-        removeDataset(d);
-        if (staleRow) staleRow.remove();
-      }
-    });
-    if (!datasets.length) setStatus("No spectra loaded.", false);
   }
 
   function buildProjectPayload() {
@@ -956,7 +1004,8 @@
         return {
           label: d.label, color: d.color, colorAuto: d.colorAuto, paletteIndex: d.paletteIndex,
           offset: d.offset, normalize: d.normalize, lineStyle: d.lineStyle, visible: d.visible,
-          colUnit: d.colUnit, source: d.source, xNm: d.xNm, y: d.y
+          colUnit: d.colUnit, source: d.source, xNm: d.xNm, y: d.y,
+          selectedPeakIndices: d.selectedPeakIndices || []
         };
       })
     };
@@ -984,6 +1033,11 @@
     yMinInput.value = c.yMin != null ? c.yMin : "";
     yMaxInput.value = c.yMax != null ? c.yMax : "";
     yStepInput.value = c.yStep != null ? c.yStep : "";
+    xGridOpacityInput.value = c.xGridOpacity != null ? c.xGridOpacity : 0.15;
+    yGridOpacityInput.value = c.yGridOpacity != null ? c.yGridOpacity : 0.5;
+    legendPositionSelect.value = c.legendPosition || "top-right";
+    xAxisLabelInput.value = c.xAxisLabelOverride || "";
+    yAxisLabelInput.value = c.yAxisLabelOverride || "";
     readCustom();
 
     spectrumMode = project.spectrumMode === "fluorescence" ? "fluorescence" : "absorption";
@@ -1004,6 +1058,7 @@
       ds.visible = saved.visible !== false;
       ds.colUnit = saved.colUnit || "nm";
       ds.source = saved.source || null;
+      ds.selectedPeakIndices = Array.isArray(saved.selectedPeakIndices) ? saved.selectedPeakIndices : [];
 
       row.querySelector('[data-role="color"]').value = ds.color;
       row.querySelector('[data-role="legend"]').value = ds.label;
@@ -1191,7 +1246,6 @@
 
     var colorInput = row.querySelector('[data-role="color"]');
     var legendInput = row.querySelector('[data-role="legend"]');
-    var exampleBtn = row.querySelector('[data-role="example-btn"]');
     var fileInput = row.querySelector('[data-role="file-input"]');
     var pasteToggleBtn = row.querySelector('[data-role="paste-toggle-btn"]');
     var pasteTextarea = row.querySelector('[data-role="paste-textarea"]');
@@ -1201,19 +1255,59 @@
     var normalizeSelect = row.querySelector('[data-role="normalize"]');
     var lineStyleSelect = row.querySelector('[data-role="line-style"]');
     var visibleInput = row.querySelector('[data-role="visible"]');
+    var findPeaksBtn = row.querySelector('[data-role="find-peaks-btn"]');
+    var peaksPanel = row.querySelector('[data-role="peaks-panel"]');
+    var peaksSensitivity = row.querySelector('[data-role="peaks-sensitivity"]');
+    var peaksList = row.querySelector('[data-role="peaks-list"]');
     var downloadBtn = row.querySelector('[data-role="download-btn"]');
     var removeBtn = row.querySelector('[data-role="remove-btn"]');
 
     colorInput.value = ds.color;
     lineStyleSelect.value = ds.lineStyle;
 
-    function applyLoadResult(result, defaultLabel) {
-      if (!result.ok) { setRowStatus(row, result.msg, true); return; }
-      if (!legendInput.value.trim()) legendInput.value = defaultLabel;
-      ds.label = legendInput.value;
-      setRowStatus(row, result.msg, false);
+    function renderPeaksList() {
+      var y = displayY(ds);
+      var candidates = findPeaks(y, parseFloat(peaksSensitivity.value));
+      var candidateIndices = candidates.map(function (p) { return p.index; });
+      ds.selectedPeakIndices = (ds.selectedPeakIndices || []).filter(function (idx) {
+        return candidateIndices.indexOf(idx) !== -1;
+      });
+      peaksList.innerHTML = "";
+      if (!candidates.length) {
+        var none = document.createElement("p");
+        none.className = "hint";
+        none.textContent = "No peaks found at this sensitivity.";
+        peaksList.appendChild(none);
+      }
+      candidates.slice().sort(function (a, b) { return a.index - b.index; }).forEach(function (p) {
+        var label = document.createElement("label");
+        label.className = "spectra-checkbox-field";
+        var cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = ds.selectedPeakIndices.indexOf(p.index) !== -1;
+        cb.addEventListener("change", function () {
+          var pos = ds.selectedPeakIndices.indexOf(p.index);
+          if (cb.checked && pos === -1) ds.selectedPeakIndices.push(p.index);
+          if (!cb.checked && pos !== -1) ds.selectedPeakIndices.splice(pos, 1);
+          draw();
+        });
+        var unit = axisUnitSelect.value;
+        var xv = convertFromNm(ds.xNm[p.index], unit);
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(" " + formatVal(xv, unit) + " " + unitLabel(unit) + ", value " + y[p.index].toFixed(3)));
+        peaksList.appendChild(label);
+      });
       draw();
     }
+
+    findPeaksBtn.addEventListener("click", function () {
+      peaksPanel.hidden = !peaksPanel.hidden;
+      if (!peaksPanel.hidden) renderPeaksList();
+    });
+
+    peaksSensitivity.addEventListener("input", function () {
+      if (!peaksPanel.hidden) renderPeaksList();
+    });
 
     colorInput.addEventListener("input", function () {
       ds.color = colorInput.value;
@@ -1224,16 +1318,6 @@
     legendInput.addEventListener("input", function () {
       ds.label = legendInput.value;
       draw();
-    });
-
-    exampleBtn.addEventListener("click", function () {
-      fileInput.value = "";
-      var ex = generateExample();
-      ds.xNm = ex.xNm; ds.y = ex.y; ds.source = "example";
-      applyLoadResult({
-        ok: true,
-        msg: "Loaded " + ex.label + " (" + ex.xNm.length + " points). Approximate shape for demonstration — not measured data."
-      }, ex.label);
     });
 
     fileInput.addEventListener("change", function () {
@@ -1325,14 +1409,15 @@
     draw();
   });
 
-  [titleInput, xMinInput, xMaxInput, xStepInput, yMinInput, yMaxInput, yStepInput, bgCustomInput].forEach(function (el) {
+  [titleInput, xMinInput, xMaxInput, xStepInput, yMinInput, yMaxInput, yStepInput, bgCustomInput,
+    xAxisLabelInput, yAxisLabelInput, xGridOpacityInput, yGridOpacityInput].forEach(function (el) {
     el.addEventListener("input", function () {
       readCustom();
       draw();
     });
   });
 
-  [closedBoxInput, xGridInput, yGridInput].forEach(function (el) {
+  [closedBoxInput, xGridInput, yGridInput, legendPositionSelect].forEach(function (el) {
     el.addEventListener("change", function () {
       readCustom();
       draw();
@@ -1351,7 +1436,7 @@
   });
 
   resetAxesBtn.addEventListener("click", function () {
-    [titleInput, xMinInput, xMaxInput, xStepInput, yMinInput, yMaxInput, yStepInput].forEach(function (el) {
+    [titleInput, xMinInput, xMaxInput, xStepInput, yMinInput, yMaxInput, yStepInput, xAxisLabelInput, yAxisLabelInput].forEach(function (el) {
       el.value = "";
     });
     readCustom();
@@ -1376,7 +1461,7 @@
     return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
   }
 
-  dataBtn.addEventListener("click", function () {
+  function buildVisibleDataCsv() {
     var unit = axisUnitSelect.value;
     var rows = [["Spectrum", unitLabel(unit), yValueLabel()]];
     var xMin = custom.xMin, xMax = custom.xMax;
@@ -1393,9 +1478,61 @@
         any = true;
       });
     });
-    if (!any) return;
-    var csv = rows.map(function (r) { return r.map(escapeCsvCell).join(","); }).join("\r\n");
-    downloadBlob("spectra-visible-" + unit.replace("-", "") + ".csv", new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+    if (!any) return null;
+    return { unit: unit, csv: rows.map(function (r) { return r.map(escapeCsvCell).join(","); }).join("\r\n") };
+  }
+
+  dataBtn.addEventListener("click", function () {
+    var result = buildVisibleDataCsv();
+    if (!result) return;
+    downloadBlob("spectra-visible-" + result.unit.replace("-", "") + ".csv", new Blob([result.csv], { type: "text/csv;charset=utf-8;" }));
+  });
+
+  (function () {
+    if (typeof navigator === "undefined" || !navigator.share || !navigator.canShare) return;
+    try {
+      var testFile = new File(["x"], "test.png", { type: "image/png" });
+      if (navigator.canShare({ files: [testFile] })) shareGroupEl.hidden = false;
+    } catch (e) { /* Web Share (files) unsupported here */ }
+  })();
+
+  shareBtn.addEventListener("click", function () {
+    var mode = shareModeSelect.value;
+    var files = [];
+
+    function addImageAndShare() {
+      canvas.toBlob(function (blob) {
+        if (blob) files.push(new File([blob], "spectrum-chart.png", { type: "image/png" }));
+        doShare();
+      });
+    }
+
+    function doShare() {
+      if (!files.length) { setStatus("Nothing to share yet — load a spectrum first.", true); return; }
+      if (files.length > 1 && navigator.canShare && !navigator.canShare({ files: files })) {
+        files = [files[0]];
+      }
+      var shareData = { files: files, title: (custom.title && custom.title.trim()) || "Spectrum chart", text: "Spectrum chart from SpectraWave" };
+      if (navigator.canShare && !navigator.canShare(shareData)) {
+        setStatus("Your browser can't share files directly — use the Download buttons instead.", true);
+        return;
+      }
+      navigator.share(shareData).catch(function (e) {
+        if (e && e.name !== "AbortError") setStatus("Couldn't share: " + e.message, true);
+      });
+    }
+
+    if (mode === "data" || mode === "both") {
+      var result = buildVisibleDataCsv();
+      if (result) {
+        files.push(new File([result.csv], "spectra-visible-" + result.unit.replace("-", "") + ".csv", { type: "text/csv" }));
+      }
+    }
+    if (mode === "image" || mode === "both") {
+      addImageAndShare();
+    } else {
+      doShare();
+    }
   });
 
   globalUploadInput.addEventListener("change", function () {
@@ -1494,16 +1631,15 @@
 
   window.addEventListener("resize", draw);
 
-  function loadDefaultDemoView() {
-    var first = addDataset();
-    first.row.querySelector('[data-role="example-btn"]').click();
+  function addInitialEmptyRow() {
+    addDataset();
   }
 
   function initFoldersAndDefaultView() {
     if (typeof indexedDB === "undefined") {
       dbAvailable = false;
       setFolderStatus("Your browser doesn't support saved projects locally — use Save/Load project files instead.", false);
-      loadDefaultDemoView();
+      addInitialEmptyRow();
       renderFolderTree();
       return;
     }
@@ -1514,7 +1650,7 @@
     }).then(function (loaded) {
       folders = loaded || [];
       if (!folders.length) {
-        loadDefaultDemoView();
+        addInitialEmptyRow();
       } else {
         var lastId = null;
         try { lastId = localStorage.getItem("spectrawave-last-folder"); } catch (e) { /* ignore */ }
@@ -1527,7 +1663,7 @@
     }).catch(function () {
       dbAvailable = false;
       setFolderStatus("Couldn't open local storage for projects — use Save/Load project files instead.", false);
-      loadDefaultDemoView();
+      addInitialEmptyRow();
       renderFolderTree();
     });
   }

@@ -26,6 +26,8 @@
 
 * { box-sizing: border-box; }
 
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   padding: 0;
@@ -427,6 +429,13 @@ td:first-child {
   white-space: nowrap;
 }
 
+@media (max-width: 640px) {
+  .spectra-checkbox-field {
+    white-space: normal;
+    align-items: flex-start;
+  }
+}
+
 .spectra-row-strip .spectra-checkbox-field {
   padding-bottom: 0.6rem;
 }
@@ -489,6 +498,25 @@ td:first-child {
   margin-top: 0.5rem;
 }
 
+.spectra-peaks-panel {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-elev);
+}
+
+.spectra-peaks-sensitivity {
+  max-width: 260px;
+  margin-bottom: 0.6rem;
+}
+
+.spectra-peaks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
 .spectra-row-status {
   margin: 0.6rem 0 0;
 }
@@ -515,6 +543,22 @@ td:first-child {
 
 .file-btn:hover {
   border-color: var(--accent);
+}
+
+.spectra-share-group {
+  display: inline-flex;
+  gap: 0.5rem;
+}
+
+.spectra-share-select {
+  font-family: var(--sans);
+  font-size: 0.88rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
 }
 
 .chart-settings {
@@ -685,9 +729,15 @@ td:first-child {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+@media (max-width: 600px) {
+  .chart-settings-grid-3col {
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  }
+}
+
 @media (max-width: 1300px) {
   .spectra-explorer-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .spectra-folder-sidebar {
     position: static;
@@ -703,7 +753,7 @@ td:first-child {
     transform: none;
   }
   .spectra-top-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
