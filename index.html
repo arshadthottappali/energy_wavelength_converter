@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Laser Wavelength to Energy Converter | nm ↔ eV ↔ cm⁻¹ ↔ THz</title>
+<meta name="description" content="Free online laser wavelength converter. Instantly convert between wavelength (nm), photon energy (eV, J), wavenumber (cm⁻¹), and frequency (THz). Includes a reference table for common lasers (HeNe, Nd:YAG, CO2, excimer) and CSV export.">
+<meta name="keywords" content="wavelength to energy converter, nm to eV, wavelength to wavenumber, energy to wavelength calculator, laser wavelength calculator, photon energy calculator, eV to nm, cm-1 to eV, frequency to wavelength converter">
+<meta name="author" content="Energy Wavelength Converter">
+<link rel="canonical" href="https://energy-wavelength-converter.vercel.app/">
+<meta name="robots" content="index, follow, max-image-preview:large">
+
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Laser Wavelength to Energy Converter | nm ↔ eV ↔ cm⁻¹ ↔ THz">
+<meta property="og:description" content="Convert laser wavelength to photon energy, wavenumber, and frequency instantly. Free browser-based calculator with a common-laser reference table and CSV export.">
+<meta property="og:url" content="https://energy-wavelength-converter.vercel.app/">
+<meta property="og:site_name" content="Energy Wavelength Converter">
+<meta property="og:locale" content="en_US">
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Laser Wavelength to Energy Converter">
+<meta name="twitter:description" content="Convert wavelength (nm) to energy (eV), wavenumber (cm⁻¹), and frequency (THz) instantly in your browser.">
+
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔬</text></svg>">
+<link rel="stylesheet" href="styles.css">
+
+<!-- JSON-LD: WebApplication -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Laser Wavelength to Energy Converter",
+  "url": "https://energy-wavelength-converter.vercel.app/",
+  "applicationCategory": "UtilitiesApplication",
+  "operatingSystem": "Any (runs in browser)",
+  "description": "A free, client-side calculator that converts laser and photon wavelength between nanometers, electron-volts, wavenumber, and frequency, with a built-in reference table for common laser sources.",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "featureList": [
+    "Wavelength (nm) to energy (eV) conversion",
+    "Wavelength to wavenumber (cm⁻¹) conversion",
+    "Wavelength to frequency (THz) conversion",
+    "Reverse conversion from energy or wavenumber back to wavelength",
+    "Reference table of common laser wavelengths",
+    "CSV export of conversion results"
+  ]
+}
+</script>
+
+<!-- JSON-LD: FAQPage for GEO / AI answer engines -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "How do you convert wavelength to energy in eV?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Photon energy in electron-volts equals 1239.84198 divided by the wavelength in nanometers: E(eV) = 1239.84198 / λ(nm). For example, a 632.8 nm HeNe laser photon has an energy of about 1.959 eV."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What is the formula for wavelength to wavenumber conversion?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Wavenumber in inverse centimeters equals 10,000,000 divided by the wavelength in nanometers: ν̃(cm⁻¹) = 1e7 / λ(nm). A 1064 nm Nd:YAG laser corresponds to roughly 9398.5 cm⁻¹."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Why does energy increase as wavelength decreases?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Photon energy is inversely proportional to wavelength (E = hc/λ), so as wavelength gets shorter, the same speed-of-light propagation packs more oscillation cycles per unit length, raising the frequency and therefore the energy. This inverse relationship is often called wavelength compression when comparing linear wavelength scales to the nonlinear energy or wavenumber scales they map to."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What is the photon energy of a 1064 nm Nd:YAG laser?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "A 1064 nm Nd:YAG laser photon has an energy of approximately 1.165 eV, a wavenumber of about 9398.5 cm⁻¹, and a frequency of about 281.76 THz."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do you convert energy in eV back to wavelength in nm?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Wavelength in nanometers equals 1239.84198 divided by the energy in electron-volts: λ(nm) = 1239.84198 / E(eV). This is the same constant used in the forward conversion because the relationship is reciprocal."
+      }
+    }
+  ]
+}
+</script>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <h1>Laser Wavelength ↔ Energy Converter</h1>
+    <p class="tagline">Convert photon wavelength to energy (eV), wavenumber (cm⁻¹), and frequency (THz) — instantly, in your browser, no data sent anywhere.</p>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section id="converter" aria-labelledby="converter-heading">
+    <h2 id="converter-heading">Wavelength / Energy Calculator</h2>
+    <div class="card converter-card">
+      <div class="field-grid">
+        <label class="field">
+          <span>Wavelength (nm)</span>
+          <input type="number" id="input-nm" inputmode="decimal" placeholder="e.g. 632.8" step="any">
+        </label>
+        <label class="field">
+          <span>Energy (eV)</span>
+          <input type="number" id="input-ev" inputmode="decimal" placeholder="e.g. 1.959" step="any">
+        </label>
+        <label class="field">
+          <span>Wavenumber (cm⁻¹)</span>
+          <input type="number" id="input-cm1" inputmode="decimal" placeholder="e.g. 15803" step="any">
+        </label>
+        <label class="field">
+          <span>Frequency (THz)</span>
+          <input type="number" id="input-thz" inputmode="decimal" placeholder="e.g. 473.76" step="any">
+        </label>
+        <label class="field">
+          <span>Energy (Joules)</span>
+          <input type="text" id="input-j" readonly placeholder="calculated">
+        </label>
+        <label class="field">
+          <span>Wavelength (µm)</span>
+          <input type="text" id="input-um" readonly placeholder="calculated">
+        </label>
+      </div>
+      <div class="actions">
+        <button type="button" id="clear-btn" class="btn btn-secondary">Clear</button>
+        <button type="button" id="export-btn" class="btn btn-primary">Export result (CSV)</button>
+      </div>
+      <p class="hint">Type a value into any field — the other four update automatically. Formulas: E(eV) = 1239.84198 / λ(nm) &nbsp;·&nbsp; ν̃(cm⁻¹) = 1e7 / λ(nm) &nbsp;·&nbsp; f(THz) = 299792.458 / λ(nm)</p>
+    </div>
+  </section>
+
+  <!-- Reserved ad slot: future Google AdSense unit -->
+  <div id="ad-slot" class="ad-slot" aria-hidden="true"></div>
+
+  <section id="reference-table" aria-labelledby="reference-heading">
+    <h2 id="reference-heading">Common Laser Wavelength Reference Table</h2>
+    <p class="section-intro">Pre-calculated energy, wavenumber, and frequency values for widely used laser sources — useful for spectroscopy, photolithography, and optics reference without running the calculator.</p>
+    <div class="table-scroll">
+      <table id="laser-table">
+        <thead>
+          <tr>
+            <th>Laser Source</th>
+            <th>Wavelength (nm)</th>
+            <th>Energy (eV)</th>
+            <th>Wavenumber (cm⁻¹)</th>
+            <th>Frequency (THz)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>ArF Excimer Laser</td><td>193</td><td>6.424</td><td>51813</td><td>1553.3</td></tr>
+          <tr><td>KrCl Excimer Laser</td><td>222</td><td>5.585</td><td>45045</td><td>1350.4</td></tr>
+          <tr><td>KrF Excimer Laser</td><td>248</td><td>4.999</td><td>40323</td><td>1208.8</td></tr>
+          <tr><td>XeCl Excimer Laser</td><td>308</td><td>4.025</td><td>32468</td><td>973.4</td></tr>
+          <tr><td>Nitrogen (N₂) Laser</td><td>337.1</td><td>3.678</td><td>29665</td><td>889.3</td></tr>
+          <tr><td>Nd:YAG (4th Harmonic)</td><td>266</td><td>4.661</td><td>37594</td><td>1127.0</td></tr>
+          <tr><td>Nd:YAG (3rd Harmonic)</td><td>355</td><td>3.493</td><td>28169</td><td>844.5</td></tr>
+          <tr><td>Diode Laser (Violet / Blu-ray)</td><td>405</td><td>3.061</td><td>24691</td><td>740.2</td></tr>
+          <tr><td>Argon-Ion Laser (Blue)</td><td>488</td><td>2.541</td><td>20492</td><td>614.3</td></tr>
+          <tr><td>Argon-Ion Laser (Green)</td><td>514.5</td><td>2.410</td><td>19436</td><td>582.7</td></tr>
+          <tr><td>Nd:YAG (2nd Harmonic / Green)</td><td>532</td><td>2.331</td><td>18797</td><td>563.5</td></tr>
+          <tr><td>Helium-Neon (HeNe) Laser</td><td>632.8</td><td>1.959</td><td>15803</td><td>473.8</td></tr>
+          <tr><td>Ruby Laser</td><td>694.3</td><td>1.786</td><td>14403</td><td>431.8</td></tr>
+          <tr><td>Ti:Sapphire Laser (center)</td><td>800</td><td>1.550</td><td>12500</td><td>374.7</td></tr>
+          <tr><td>GaAs Diode Laser</td><td>840</td><td>1.476</td><td>11905</td><td>356.9</td></tr>
+          <tr><td>Ytterbium Fiber Laser</td><td>1030</td><td>1.204</td><td>9708.7</td><td>291.1</td></tr>
+          <tr><td>Nd:YAG Laser (fundamental)</td><td>1064</td><td>1.165</td><td>9398.5</td><td>281.8</td></tr>
+          <tr><td>InGaAsP Telecom Laser (C-band)</td><td>1550</td><td>0.800</td><td>6451.6</td><td>193.4</td></tr>
+          <tr><td>Ho:YAG Laser</td><td>2100</td><td>0.590</td><td>4761.9</td><td>142.8</td></tr>
+          <tr><td>Er:YAG Laser</td><td>2940</td><td>0.422</td><td>3401.4</td><td>102.0</td></tr>
+          <tr><td>CO₂ Laser</td><td>10600</td><td>0.117</td><td>943.4</td><td>28.3</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <button type="button" id="export-table-btn" class="btn btn-secondary">Export table (CSV)</button>
+  </section>
+
+  <section id="guide" aria-labelledby="guide-heading">
+    <h2 id="guide-heading">Understanding Wavelength, Energy, and Wavenumber Conversion</h2>
+
+    <h3>Why convert wavelength to energy?</h3>
+    <p>Wavelength (nm), photon energy (eV), wavenumber (cm⁻¹), and frequency (THz) are four ways of describing the same electromagnetic wave. Spectroscopists, laser engineers, and photonics researchers switch between them constantly: laser manufacturers specify wavelength, chemists reading infrared or Raman spectra work in wavenumber, semiconductor physicists talk about bandgap energy in eV, and RF or telecom engineers think in frequency. Converting between them by hand is error-prone, so a dedicated wavelength to energy converter saves time and avoids unit mistakes in publications and lab notebooks.</p>
+
+    <h3>The core formula: E = hc/λ</h3>
+    <p>Photon energy is given by E = hc/λ, where h is Planck's constant and c is the speed of light. Expressed in the units researchers use most often, this simplifies to E(eV) = 1239.84198 / λ(nm) — a constant worth memorizing. Wavenumber follows a similar reciprocal relationship: ν̃(cm⁻¹) = 1 / λ(cm), which becomes ν̃(cm⁻¹) = 1e7 / λ(nm) when wavelength is given in nanometers. Frequency is simplest of all: f = c / λ, or f(THz) = 299792.458 / λ(nm).</p>
+
+    <h3>Why does wavelength compression happen when converting to energy scaling?</h3>
+    <p>Because energy, wavenumber, and frequency are all inversely proportional to wavelength, equal steps in wavelength do not produce equal steps in energy. Near the visible spectrum's blue end, a 10 nm change in wavelength corresponds to a much larger jump in eV than the same 10 nm change near the infrared end. This nonlinear "compression" is why spectra plotted on an energy or wavenumber axis look stretched at short wavelengths and squeezed at long wavelengths compared to the same data plotted on a linear wavelength axis. It also explains why UV and X-ray photons carry disproportionately more energy per nanometer of wavelength shift than infrared photons do — the inverse relationship amplifies energy differences as wavelength shrinks.</p>
+
+    <h3>Choosing the right unit for your field</h3>
+    <p>Electron-volts (eV) are the standard in semiconductor physics and photodiode/laser diode datasheets, since bandgap energies are naturally expressed this way. Wavenumber (cm⁻¹) dominates infrared, Raman, and vibrational spectroscopy because it is directly proportional to energy and vibrational frequencies of molecular bonds are conventionally tabulated in cm⁻¹. Frequency (THz or Hz) is preferred in telecommunications, ultrafast optics, and anywhere signal bandwidth matters. Wavelength (nm or µm) remains the most intuitive unit for describing color, laser output, and optical filter specifications. This calculator lets you enter a value in any one of these four units and see the other three update immediately, so you never need to memorize which multiplier to use.</p>
+
+    <h3>Common use cases</h3>
+    <p>Typical searches this tool answers include converting a 532 nm green laser to its energy in eV, finding the wavenumber equivalent of a 10.6 µm CO₂ laser line, checking the frequency of a 1550 nm telecom laser, or working backward from a semiconductor bandgap in eV to the corresponding absorption edge wavelength in nm. The reference table above already includes pre-calculated values for the most frequently cited laser sources — HeNe, Nd:YAG and its harmonics, excimer lasers, Ti:Sapphire, and CO₂ — so many lookups won't even require typing a number into the calculator.</p>
+  </section>
+
+  <section id="faq" aria-labelledby="faq-heading">
+    <h2 id="faq-heading">Frequently Asked Questions</h2>
+    <div class="faq-item">
+      <h3>How do you convert wavelength to energy in eV?</h3>
+      <p>E(eV) = 1239.84198 / λ(nm). A 632.8 nm HeNe laser photon is about 1.959 eV.</p>
+    </div>
+    <div class="faq-item">
+      <h3>What is the formula for wavelength to wavenumber conversion?</h3>
+      <p>ν̃(cm⁻¹) = 1e7 / λ(nm). A 1064 nm Nd:YAG laser is about 9398.5 cm⁻¹.</p>
+    </div>
+    <div class="faq-item">
+      <h3>What is the photon energy of a 1064 nm Nd:YAG laser?</h3>
+      <p>Approximately 1.165 eV, 9398.5 cm⁻¹, and 281.76 THz.</p>
+    </div>
+    <div class="faq-item">
+      <h3>How do you convert energy in eV back to wavelength in nm?</h3>
+      <p>λ(nm) = 1239.84198 / E(eV) — the same constant, applied in reverse.</p>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p>All calculations run locally in your browser. No wavelength or energy data is transmitted or stored. &middot; hc = 1239.84198 eV·nm, c = 299792458 m/s</p>
+  </div>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>

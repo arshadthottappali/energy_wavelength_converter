@@ -1,0 +1,33 @@
+# Laser Wavelength to Energy Converter
+
+> A free, client-side web tool that converts photon/laser wavelength between nanometers (nm), energy (eV and Joules), wavenumber (cm⁻¹), and frequency (THz). All computation runs in the browser; no data is transmitted.
+
+## Key formulas
+
+- Energy (eV) = 1239.84198 / Wavelength (nm)
+- Wavenumber (cm⁻¹) = 10,000,000 / Wavelength (nm)
+- Frequency (THz) = 299792.458 / Wavelength (nm)
+- Wavelength (nm) = 1239.84198 / Energy (eV)
+
+## Reference values for common lasers
+
+| Laser | Wavelength (nm) | Energy (eV) | Wavenumber (cm⁻¹) | Frequency (THz) |
+|---|---|---|---|---|
+| ArF Excimer | 193 | 6.424 | 51813 | 1553.3 |
+| KrF Excimer | 248 | 4.999 | 40323 | 1208.8 |
+| XeCl Excimer | 308 | 4.025 | 32468 | 973.4 |
+| Nd:YAG 3rd Harmonic | 355 | 3.493 | 28169 | 844.5 |
+| Diode (violet/Blu-ray) | 405 | 3.061 | 24691 | 740.2 |
+| Argon-Ion (blue) | 488 | 2.541 | 20492 | 614.3 |
+| Nd:YAG 2nd Harmonic (green) | 532 | 2.331 | 18797 | 563.5 |
+| Helium-Neon (HeNe) | 632.8 | 1.959 | 15803 | 473.8 |
+| Ruby | 694.3 | 1.786 | 14403 | 431.8 |
+| Ti:Sapphire (center) | 800 | 1.550 | 12500 | 374.7 |
+| Nd:YAG (fundamental) | 1064 | 1.165 | 9398.5 | 281.8 |
+| Telecom InGaAsP (C-band) | 1550 | 0.800 | 6451.6 | 193.4 |
+| Er:YAG | 2940 | 0.422 | 3401.4 | 102.0 |
+| CO2 | 10600 | 0.117 | 943.4 | 28.3 |
+
+## Pages
+
+- [Converter and reference tables](https://energy-wavelength-converter.vercel.app/): interactive calculator, full laser reference table, and an educational guide explaining the wavelength-to-energy relationship and why energy scales nonlinearly with wavelength.
