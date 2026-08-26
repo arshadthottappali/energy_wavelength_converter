@@ -392,6 +392,36 @@
     return ticks;
   }
 
+  function generateExampleSpectrum() {
+    var xNm = [], yRaw = [];
+    for (var nm = 380; nm <= 560; nm += 2) {
+      var main = Math.exp(-Math.pow(nm - 490, 2) / (2 * Math.pow(13, 2)));
+      var shoulder = 0.42 * Math.exp(-Math.pow(nm - 460, 2) / (2 * Math.pow(11, 2)));
+      xNm.push(nm);
+      yRaw.push(main + shoulder);
+    }
+    var max = Math.max.apply(null, yRaw);
+    var y = yRaw.map(function (v) { return Math.round((v / max) * 1000) / 1000; });
+    return { xNm: xNm, y: y, label: "fluorescein-example (illustrative)" };
+  }
+
+  function generateExampleEmissionSpectrum() {
+    var xNm = [], yRaw = [];
+    for (var nm = 480; nm <= 650; nm += 2) {
+      var main = Math.exp(-Math.pow(nm - 513, 2) / (2 * Math.pow(15, 2)));
+      var tail = 0.28 * Math.exp(-Math.pow(nm - 555, 2) / (2 * Math.pow(28, 2)));
+      xNm.push(nm);
+      yRaw.push(main + tail);
+    }
+    var max = Math.max.apply(null, yRaw);
+    var y = yRaw.map(function (v) { return Math.round((v / max) * 1000) / 1000; });
+    return { xNm: xNm, y: y, label: "fluorescein-emission-example (illustrative)" };
+  }
+
+  function generateExample() {
+    return spectrumMode === "fluorescence" ? generateExampleEmissionSpectrum() : generateExampleSpectrum();
+  }
+
   function setStatus(msg, isError) {
     statusEl.textContent = msg;
     statusEl.classList.toggle("status-error", !!isError);
@@ -936,6 +966,7 @@
     rows = rows.slice().sort(function (a, b) { return a[0] - b[0]; });
     var xNm = rows.map(function (r) { return convertToNm(r[0], col1Unit); });
     var labels = [];
+    var touchedIds = [];
 
     for (var col = 1; col < numCols; col++) {
       var y = rows.map(function (r) { return r[col]; });
@@ -954,15 +985,30 @@
       targetDs.y = y;
       targetDs.colUnit = col1Unit;
       targetDs.source = source;
+      touchedIds.push(targetDs.id);
       var legendEl = targetRow.querySelector('[data-role="legend"]');
       if (!legendEl.value.trim()) legendEl.value = label;
       targetDs.label = legendEl.value;
     }
 
+    removeStaleExampleRows(touchedIds);
+
     var msg = numCols > 2
       ? "Loaded " + (numCols - 1) + " spectra from " + sourceLabel + " (" + labels.join(", ") + "), " + rows.length + " points each."
       : "Loaded " + sourceLabel + " (" + rows.length + " points).";
     return { ok: true, msg: msg };
+  }
+
+  function loadFileIntoRow(file, ds, row, colUnit) {
+    var reader = new FileReader();
+    reader.onload = function () {
+      var parsed = parseCsvWide(String(reader.result));
+      var result = loadWideIntoDatasets(ds, row, parsed, colUnit, file.name, "file");
+      setRowStatus(row, result.msg, !result.ok);
+      if (result.ok) draw();
+    };
+    reader.onerror = function () { setRowStatus(row, "Could not read that file.", true); };
+    reader.readAsText(file);
   }
 
   function paletteColorFor(idx) {
@@ -992,6 +1038,17 @@
   function removeDataset(ds) {
     var idx = datasets.indexOf(ds);
     if (idx !== -1) datasets.splice(idx, 1);
+  }
+
+  function removeStaleExampleRows(excludeIds) {
+    datasets.slice().forEach(function (d) {
+      if (d.source === "example" && excludeIds.indexOf(d.id) === -1) {
+        var staleRow = datasetsContainer.querySelector('[data-ds-id="' + d.id + '"]');
+        removeDataset(d);
+        if (staleRow) staleRow.remove();
+      }
+    });
+    if (!datasets.length) setStatus("No spectra loaded.", false);
   }
 
   function buildProjectPayload() {
@@ -1246,6 +1303,7 @@
 
     var colorInput = row.querySelector('[data-role="color"]');
     var legendInput = row.querySelector('[data-role="legend"]');
+    var exampleBtn = row.querySelector('[data-role="example-btn"]');
     var fileInput = row.querySelector('[data-role="file-input"]');
     var pasteToggleBtn = row.querySelector('[data-role="paste-toggle-btn"]');
     var pasteTextarea = row.querySelector('[data-role="paste-textarea"]');
@@ -1320,18 +1378,28 @@
       draw();
     });
 
+    function applyLoadResult(result, defaultLabel) {
+      if (!result.ok) { setRowStatus(row, result.msg, true); return; }
+      if (!legendInput.value.trim()) legendInput.value = defaultLabel;
+      ds.label = legendInput.value;
+      setRowStatus(row, result.msg, false);
+      draw();
+    }
+
+    exampleBtn.addEventListener("click", function () {
+      fileInput.value = "";
+      var ex = generateExample();
+      ds.xNm = ex.xNm; ds.y = ex.y; ds.source = "example";
+      applyLoadResult({
+        ok: true,
+        msg: "Loaded " + ex.label + " (" + ex.xNm.length + " points). Approximate shape for demonstration — not measured data."
+      }, ex.label);
+    });
+
     fileInput.addEventListener("change", function () {
       var file = fileInput.files[0];
       if (!file) return;
-      var reader = new FileReader();
-      reader.onload = function () {
-        var parsed = parseCsvWide(String(reader.result));
-        var result = loadWideIntoDatasets(ds, row, parsed, colUnitSelect.value, file.name, "file");
-        setRowStatus(row, result.msg, !result.ok);
-        if (result.ok) draw();
-      };
-      reader.onerror = function () { setRowStatus(row, "Could not read that file.", true); };
-      reader.readAsText(file);
+      loadFileIntoRow(file, ds, row, colUnitSelect.value);
     });
 
     pasteToggleBtn.addEventListener("click", function () {
@@ -1543,13 +1611,14 @@
     var file = globalUploadInput.files[0];
     if (!file) return;
     var emptyDs = findEmptyDataset();
-    var targetRow = emptyDs ? datasetsContainer.querySelector('[data-ds-id="' + emptyDs.id + '"]') : null;
-    if (!targetRow) targetRow = addDataset().row;
-    var rowFileInput = targetRow.querySelector('[data-role="file-input"]');
-    var dt = new DataTransfer();
-    dt.items.add(file);
-    rowFileInput.files = dt.files;
-    rowFileInput.dispatchEvent(new Event("change"));
+    var target;
+    if (emptyDs) {
+      target = { ds: emptyDs, row: datasetsContainer.querySelector('[data-ds-id="' + emptyDs.id + '"]') };
+    } else {
+      target = addDataset();
+    }
+    var colUnitSelect = target.row.querySelector('[data-role="col-unit"]');
+    loadFileIntoRow(file, target.ds, target.row, colUnitSelect.value);
     globalUploadInput.value = "";
   });
 
@@ -1637,15 +1706,16 @@
 
   window.addEventListener("resize", draw);
 
-  function addInitialEmptyRow() {
-    addDataset();
+  function loadDefaultDemoView() {
+    var first = addDataset();
+    first.row.querySelector('[data-role="example-btn"]').click();
   }
 
   function initFoldersAndDefaultView() {
     if (typeof indexedDB === "undefined") {
       dbAvailable = false;
       setFolderStatus("Your browser doesn't support saved projects locally — use Save/Load project files instead.", false);
-      addInitialEmptyRow();
+      loadDefaultDemoView();
       renderFolderTree();
       return;
     }
@@ -1656,7 +1726,7 @@
     }).then(function (loaded) {
       folders = loaded || [];
       if (!folders.length) {
-        addInitialEmptyRow();
+        loadDefaultDemoView();
       } else {
         var lastId = null;
         try { lastId = localStorage.getItem("spectrawave-last-folder"); } catch (e) { /* ignore */ }
@@ -1669,7 +1739,7 @@
     }).catch(function () {
       dbAvailable = false;
       setFolderStatus("Couldn't open local storage for projects — use Save/Load project files instead.", false);
-      addInitialEmptyRow();
+      loadDefaultDemoView();
       renderFolderTree();
     });
   }

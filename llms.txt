@@ -32,9 +32,9 @@
 
 A client-side, multi-trace spectrum plotter with paired wavelength/energy axes (selectable nm, eV, or cm⁻¹):
 
-- "Spectrum type" toggle switches between absorption and steady-state fluorescence — the Y axis relabels to Fluorescence Intensity (a.u.); every other feature works identically in both modes.
+- "Spectrum type" toggle switches between absorption and steady-state fluorescence — the Y axis relabels to Fluorescence Intensity (a.u.) and the illustrative demo switches to a Stokes-shifted emission curve; every other feature works identically in both modes.
 - Load multiple spectra and overlay them, or give each an independent Y offset to stack them waterfall-style.
-- Load data via CSV upload or pasting columns copied straight from a spreadsheet — a wide-format file (wavelength plus several sample columns) automatically splits into one spectrum per column.
+- Load data via the built-in illustrative demo, CSV upload, or pasting columns copied straight from a spreadsheet — a wide-format file (wavelength plus several sample columns) automatically splits into one spectrum per column. Uploading or pasting real data automatically removes any leftover demo spectrum, so it never lingers alongside real traces.
 - New spectra are auto-assigned colors from the colorblind-safe Okabe-Ito palette, overridable per trace with a color picker, and each trace can be drawn solid, dashed, or dotted (useful for figures that will be printed in grayscale).
 - Customizable chart title, per-trace legend labels, X/Y axis min/max/tick step, independent X/Y gridline toggles, background color (transparent/white/theme/custom), and a closed axis box (top/right border + mirrored ticks, on by default) matching the GraphPad Prism convention.
 - The chart canvas stays pinned (sticky) while scrolling through the data rows and settings below it, so edits show live without losing sight of the plot.

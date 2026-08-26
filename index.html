@@ -198,7 +198,7 @@
     {
       "@type": "HowToStep",
       "name": "Load your data",
-      "text": "Click \"Add spectrum\" and either upload a two-column CSV or paste two columns copied from Excel (wavelength, energy, or wavenumber, plus absorbance)."
+      "text": "Click \"Add spectrum\" and either load the illustrative demo, upload a two-column CSV, or paste two columns copied from Excel (wavelength, energy, or wavenumber, plus absorbance)."
     },
     {
       "@type": "HowToStep",
@@ -350,7 +350,7 @@
 
           <div id="spectra-datasets" class="spectra-datasets"></div>
           <button type="button" id="spectra-add-dataset-btn" class="btn btn-secondary spectra-add-btn">+ Add spectrum</button>
-          <p class="hint">Each row loads one CSV or pasted block — but a file with wavelength in column 1 and several sample columns after it (e.g. multiple absorbance readings) automatically expands into one spectrum per column, each in its own row. Column headers, if present, become the legend labels. Every row also has its own CSV download (converted to the selected unit, offset excluded).</p>
+          <p class="hint">Each row loads one CSV or pasted block — but a file with wavelength in column 1 and several sample columns after it (e.g. multiple absorbance readings) automatically expands into one spectrum per column, each in its own row. Column headers, if present, become the legend labels. Every row also has its own CSV download (converted to the selected unit, offset excluded). The demo spectrum is an illustrative curve for demonstration, not measured data.</p>
         </div>
 
         <details class="chart-settings" open>
@@ -471,6 +471,7 @@
         <div class="spectra-row-strip">
           <input type="color" data-role="color" class="spectra-color-input" aria-label="Trace color">
           <input type="text" data-role="legend" class="spectra-legend-input" placeholder="Legend label" aria-label="Legend label">
+          <button type="button" data-role="example-btn" class="btn btn-secondary">Load demo</button>
           <label class="file-btn">
             Upload CSV
             <input type="file" data-role="file-input" accept=".csv,.tsv,.txt,text/csv" hidden>
@@ -588,7 +589,7 @@
     <p>Typical searches this tool answers include converting a 532 nm green laser to its energy in eV, finding the wavenumber equivalent of a 10.6 µm CO₂ laser line, checking the frequency of a 1550 nm telecom laser, or working backward from a semiconductor bandgap in eV to the corresponding absorption edge wavelength in nm. The reference table above already includes pre-calculated values for the most frequently cited laser sources — HeNe, Nd:YAG and its harmonics, excimer lasers, Ti:Sapphire, and CO₂ — so many lookups won't even require typing a number into the calculator.</p>
 
     <h3>How to make a publication-ready absorption spectrum figure</h3>
-    <p>Load one or more spectra into the viewer above — an uploaded CSV, or two columns pasted straight from a spreadsheet — then add more spectra to overlay them for comparison, or give each one a Y offset to stack them waterfall-style when curves overlap too much to read. Set a chart title and per-trace legend labels, pick a background (white for pasting into a manuscript, transparent for slides, or a custom color), and toggle the closed axis box if your target journal follows the GraphPad Prism convention of a full frame with tick marks on all sides rather than the open matplotlib-style default. When it looks right, download it as a vector SVG for further editing in Illustrator or Inkscape, a PNG for a slide deck, or the underlying data as CSV in whichever unit you need.</p>
+    <p>Load one or more spectra into the viewer above — the illustrative demo, an uploaded CSV, or two columns pasted straight from a spreadsheet — then add more spectra to overlay them for comparison, or give each one a Y offset to stack them waterfall-style when curves overlap too much to read. Set a chart title and per-trace legend labels, pick a background (white for pasting into a manuscript, transparent for slides, or a custom color), and toggle the closed axis box if your target journal follows the GraphPad Prism convention of a full frame with tick marks on all sides rather than the open matplotlib-style default. When it looks right, download it as a vector SVG for further editing in Illustrator or Inkscape, a PNG for a slide deck, or the underlying data as CSV in whichever unit you need.</p>
 
     <h3>Built around real researcher pain points</h3>
     <p>Beyond unit conversion, this tool's spectrum viewer was shaped by common complaints about scientific plotting software: journal editors repeatedly flag poor, inaccessible color choices as a top figure-quality problem, so new spectra are auto-assigned colors from the colorblind-safe Okabe-Ito palette by default. "Just getting data into the tool" is a widely cited annoyance, so pasting two columns copied from Excel works exactly like uploading a CSV. And because many labs still need a vector file for a journal's figure requirements, SVG export sits right next to PNG — not an afterthought.</p>
