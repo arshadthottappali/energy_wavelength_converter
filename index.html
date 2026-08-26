@@ -280,7 +280,24 @@
     <p class="section-intro">Plot absorption or fluorescence spectra, overlay or offset them like a waterfall, and export publication-ready PNG, SVG, or CSV — runs in your browser, no account needed.</p>
 
     <div class="card spectra-card">
-      <div class="spectra-top-grid">
+      <div class="spectra-explorer-layout">
+        <aside class="spectra-folder-sidebar" aria-label="Molecule projects">
+          <div class="spectra-folder-toolbar">
+            <p class="chart-settings-group-label">Projects</p>
+            <button type="button" id="spectra-new-folder-btn" class="btn btn-secondary spectra-folder-btn-sm">+ Folder</button>
+          </div>
+          <div id="spectra-folder-tree" class="spectra-folder-tree"></div>
+          <div class="spectra-folder-io-actions">
+            <button type="button" id="spectra-export-all-btn" class="btn btn-secondary spectra-folder-btn-sm">Export all</button>
+            <label class="file-btn spectra-folder-btn-sm">
+              Import all
+              <input type="file" id="spectra-import-all-input" accept=".json,application/json" hidden>
+            </label>
+          </div>
+          <p id="spectra-folder-status" class="hint spectra-folder-status" role="status"></p>
+        </aside>
+
+        <div class="spectra-top-grid">
         <div class="spectra-chart-col">
           <div class="spectra-chart-wrap">
             <canvas id="spectra-canvas"></canvas>
@@ -407,6 +424,7 @@
             <button type="button" id="spectra-reset-axes-btn" class="btn btn-secondary">Reset to auto</button>
           </div>
         </details>
+        </div>
       </div>
     </div>
 

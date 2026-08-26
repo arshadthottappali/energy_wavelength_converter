@@ -156,6 +156,12 @@
   var saveProjectBtn = document.getElementById("spectra-save-project-btn");
   var loadProjectInput = document.getElementById("spectra-load-project-input");
 
+  var folderTreeEl = document.getElementById("spectra-folder-tree");
+  var newFolderBtn = document.getElementById("spectra-new-folder-btn");
+  var folderStatusEl = document.getElementById("spectra-folder-status");
+  var exportAllBtn = document.getElementById("spectra-export-all-btn");
+  var importAllInput = document.getElementById("spectra-import-all-input");
+
   var titleInput = document.getElementById("spectra-title");
   var bgModeSelect = document.getElementById("spectra-bg-mode");
   var bgCustomWrap = document.getElementById("spectra-bg-custom-wrap");
@@ -174,10 +180,21 @@
   var datasets = [];
   var datasetIdCounter = 0;
   var spectrumMode = "absorption";
-  var custom = {
-    title: "", xMin: null, xMax: null, xStep: null, yMin: null, yMax: null, yStep: null,
-    bgMode: "transparent", bgCustomColor: "#ffffff", closedBox: true, showXGrid: true, showYGrid: true
-  };
+
+  function makeDefaultCustom() {
+    return {
+      title: "", xMin: null, xMax: null, xStep: null, yMin: null, yMax: null, yStep: null,
+      bgMode: "transparent", bgCustomColor: "#ffffff", closedBox: true, showXGrid: true, showYGrid: true
+    };
+  }
+  var custom = makeDefaultCustom();
+
+  var folders = [];
+  var activeFolderId = null;
+  var dbInstance = null;
+  var dbAvailable = false;
+  var persistDebounceTimer = null;
+  var DB_NAME = "spectrawave-projects", DB_VERSION = 1, STORE_NAME = "folders";
   var plotBox = null;
   var padLeft = 58, padRight = 16, padTop = 56, padBottom = 46;
 
@@ -367,6 +384,48 @@
     el.classList.toggle("status-error", !!isError);
   }
 
+  function setFolderStatus(msg, isError) {
+    folderStatusEl.textContent = msg;
+    folderStatusEl.classList.toggle("status-error", !!isError);
+  }
+
+  function openDb() {
+    return new Promise(function (resolve, reject) {
+      if (typeof indexedDB === "undefined") { reject(new Error("no indexedDB")); return; }
+      var req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = function () {
+        if (!req.result.objectStoreNames.contains(STORE_NAME)) {
+          req.result.createObjectStore(STORE_NAME, { keyPath: "id" });
+        }
+      };
+      req.onsuccess = function () { resolve(req.result); };
+      req.onerror = function () { reject(req.error); };
+    });
+  }
+
+  function dbGetAllFolders() {
+    return new Promise(function (resolve, reject) {
+      var tx = dbInstance.transaction(STORE_NAME, "readonly");
+      var req = tx.objectStore(STORE_NAME).getAll();
+      req.onsuccess = function () { resolve(req.result); };
+      req.onerror = function () { reject(req.error); };
+    });
+  }
+
+  function dbPutFolder(folder) {
+    if (!dbAvailable) return;
+    try {
+      dbInstance.transaction(STORE_NAME, "readwrite").objectStore(STORE_NAME).put(folder);
+    } catch (e) { /* best-effort persistence */ }
+  }
+
+  function dbDeleteFolder(id) {
+    if (!dbAvailable) return;
+    try {
+      dbInstance.transaction(STORE_NAME, "readwrite").objectStore(STORE_NAME).delete(id);
+    } catch (e) { /* best-effort persistence */ }
+  }
+
   function layout() {
     var rect = canvas.parentElement.getBoundingClientRect();
     var cssWidth = Math.max(280, rect.width);
@@ -474,6 +533,7 @@
   }
 
   function draw() {
+    scheduleFolderPersist();
     var dims = layout();
     var width = dims.width, height = dims.height;
     var bottomUnit = axisUnitSelect.value;
@@ -886,6 +946,244 @@
     if (!datasets.length) setStatus("No spectra loaded.", false);
   }
 
+  function buildProjectPayload() {
+    return {
+      version: 1,
+      spectrumMode: spectrumMode,
+      axisUnit: axisUnitSelect.value,
+      custom: custom,
+      datasets: datasets.map(function (d) {
+        return {
+          label: d.label, color: d.color, colorAuto: d.colorAuto, paletteIndex: d.paletteIndex,
+          offset: d.offset, normalize: d.normalize, lineStyle: d.lineStyle, visible: d.visible,
+          colUnit: d.colUnit, source: d.source, xNm: d.xNm, y: d.y
+        };
+      })
+    };
+  }
+
+  function makeBlankProject() {
+    return { version: 1, spectrumMode: "absorption", axisUnit: "nm", custom: makeDefaultCustom(), datasets: [] };
+  }
+
+  function restoreProjectPayload(project) {
+    datasets.length = 0;
+    datasetsContainer.innerHTML = "";
+
+    var c = project.custom || {};
+    titleInput.value = c.title || "";
+    bgModeSelect.value = c.bgMode || "transparent";
+    bgCustomInput.value = c.bgCustomColor || "#ffffff";
+    bgCustomWrap.hidden = bgModeSelect.value !== "custom";
+    closedBoxInput.checked = c.closedBox !== false;
+    xGridInput.checked = c.showXGrid !== false;
+    yGridInput.checked = c.showYGrid !== false;
+    xMinInput.value = c.xMin != null ? c.xMin : "";
+    xMaxInput.value = c.xMax != null ? c.xMax : "";
+    xStepInput.value = c.xStep != null ? c.xStep : "";
+    yMinInput.value = c.yMin != null ? c.yMin : "";
+    yMaxInput.value = c.yMax != null ? c.yMax : "";
+    yStepInput.value = c.yStep != null ? c.yStep : "";
+    readCustom();
+
+    spectrumMode = project.spectrumMode === "fluorescence" ? "fluorescence" : "absorption";
+    modeSelect.value = spectrumMode;
+    if (project.axisUnit) axisUnitSelect.value = project.axisUnit;
+
+    (project.datasets || []).forEach(function (saved) {
+      var added = addDataset();
+      var ds = added.ds, row = added.row;
+      ds.xNm = saved.xNm || [];
+      ds.y = saved.y || [];
+      ds.label = saved.label || "";
+      ds.color = saved.color || ds.color;
+      ds.colorAuto = !!saved.colorAuto;
+      ds.offset = saved.offset || 0;
+      ds.normalize = saved.normalize || "none";
+      ds.lineStyle = saved.lineStyle || "solid";
+      ds.visible = saved.visible !== false;
+      ds.colUnit = saved.colUnit || "nm";
+      ds.source = saved.source || null;
+
+      row.querySelector('[data-role="color"]').value = ds.color;
+      row.querySelector('[data-role="legend"]').value = ds.label;
+      row.querySelector('[data-role="col-unit"]').value = ds.colUnit;
+      row.querySelector('[data-role="offset"]').value = ds.offset;
+      row.querySelector('[data-role="normalize"]').value = ds.normalize;
+      row.querySelector('[data-role="line-style"]').value = ds.lineStyle;
+      row.querySelector('[data-role="visible"]').checked = ds.visible;
+    });
+
+    draw();
+  }
+
+  function scheduleFolderPersist() {
+    if (!activeFolderId) return;
+    if (persistDebounceTimer) clearTimeout(persistDebounceTimer);
+    persistDebounceTimer = setTimeout(persistActiveFolder, 500);
+  }
+
+  function persistActiveFolder() {
+    if (persistDebounceTimer) { clearTimeout(persistDebounceTimer); persistDebounceTimer = null; }
+    if (!activeFolderId) return;
+    var folder = folders.find(function (f) { return f.id === activeFolderId; });
+    if (!folder) return;
+    folder.data = buildProjectPayload();
+    folder.updatedAt = Date.now();
+    dbPutFolder(folder);
+  }
+
+  function setLastFolderId(id) {
+    try {
+      if (id) localStorage.setItem("spectrawave-last-folder", id);
+      else localStorage.removeItem("spectrawave-last-folder");
+    } catch (e) { /* private-mode storage may throw; non-fatal */ }
+  }
+
+  function activateFolder(id) {
+    if (id === activeFolderId) return;
+    persistActiveFolder();
+    var folder = folders.find(function (f) { return f.id === id; });
+    if (!folder) return;
+    activeFolderId = folder.id;
+    setLastFolderId(folder.id);
+    restoreProjectPayload(folder.data);
+    renderFolderTree();
+  }
+
+  function createFolder(parentId) {
+    var name = window.prompt(parentId ? "Sub-folder name:" : "Molecule folder name:", "");
+    if (!name || !name.trim()) return;
+
+    var seedData = activeFolderId === null ? buildProjectPayload() : makeBlankProject();
+    persistActiveFolder();
+
+    var folder = {
+      id: "f_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+      name: name.trim(),
+      parentId: parentId || null,
+      updatedAt: Date.now(),
+      data: seedData
+    };
+    folders.push(folder);
+    dbPutFolder(folder);
+
+    activeFolderId = folder.id;
+    setLastFolderId(folder.id);
+    restoreProjectPayload(folder.data);
+    renderFolderTree();
+  }
+
+  function renameFolder(id) {
+    var folder = folders.find(function (f) { return f.id === id; });
+    if (!folder) return;
+    var name = window.prompt("Rename folder:", folder.name);
+    if (!name || !name.trim()) return;
+    folder.name = name.trim();
+    folder.updatedAt = Date.now();
+    dbPutFolder(folder);
+    renderFolderTree();
+  }
+
+  function collectDescendantIds(id) {
+    var ids = [id];
+    folders.forEach(function (f) {
+      if (f.parentId === id) ids = ids.concat(collectDescendantIds(f.id));
+    });
+    return ids;
+  }
+
+  function deleteFolder(id) {
+    var folder = folders.find(function (f) { return f.id === id; });
+    if (!folder) return;
+    var toDelete = collectDescendantIds(id);
+    var label = toDelete.length > 1
+      ? "this folder and its " + (toDelete.length - 1) + " sub-folder(s)"
+      : "this folder";
+    if (!window.confirm("Delete " + label + " (\"" + folder.name + "\")? This cannot be undone.")) return;
+
+    folders = folders.filter(function (f) { return toDelete.indexOf(f.id) === -1; });
+    toDelete.forEach(function (fid) { dbDeleteFolder(fid); });
+
+    if (toDelete.indexOf(activeFolderId) !== -1) {
+      if (folders.length) {
+        var next = folders.slice().sort(function (a, b) { return b.updatedAt - a.updatedAt; })[0];
+        activeFolderId = next.id;
+        setLastFolderId(next.id);
+        restoreProjectPayload(next.data);
+      } else {
+        activeFolderId = null;
+        setLastFolderId(null);
+        restoreProjectPayload(makeBlankProject());
+        setStatus("No spectra loaded.", false);
+      }
+    }
+    renderFolderTree();
+  }
+
+  function renderFolderTree() {
+    folderTreeEl.innerHTML = "";
+
+    if (!folders.length) {
+      var empty = document.createElement("p");
+      empty.className = "hint spectra-folder-empty-hint";
+      empty.textContent = "No projects yet — click \"+ Folder\" to organize spectra by molecule.";
+      folderTreeEl.appendChild(empty);
+      return;
+    }
+
+    function renderNode(folder, depth) {
+      var row = document.createElement("div");
+      row.className = "spectra-folder-row" + (folder.id === activeFolderId ? " active" : "");
+      row.style.paddingLeft = (depth * 14) + "px";
+
+      var nameBtn = document.createElement("button");
+      nameBtn.type = "button";
+      nameBtn.className = "spectra-folder-name-btn";
+      nameBtn.textContent = folder.name;
+      nameBtn.title = "Open " + folder.name;
+      nameBtn.addEventListener("click", function () { activateFolder(folder.id); });
+      row.appendChild(nameBtn);
+
+      var addBtn = document.createElement("button");
+      addBtn.type = "button";
+      addBtn.className = "spectra-folder-icon-btn";
+      addBtn.textContent = "+";
+      addBtn.title = "Add sub-folder";
+      addBtn.setAttribute("aria-label", "Add sub-folder to " + folder.name);
+      addBtn.addEventListener("click", function (e) { e.stopPropagation(); createFolder(folder.id); });
+      row.appendChild(addBtn);
+
+      var renameBtn = document.createElement("button");
+      renameBtn.type = "button";
+      renameBtn.className = "spectra-folder-icon-btn";
+      renameBtn.textContent = "✎";
+      renameBtn.title = "Rename";
+      renameBtn.setAttribute("aria-label", "Rename " + folder.name);
+      renameBtn.addEventListener("click", function (e) { e.stopPropagation(); renameFolder(folder.id); });
+      row.appendChild(renameBtn);
+
+      var delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "spectra-folder-icon-btn spectra-folder-delete-btn";
+      delBtn.textContent = "×";
+      delBtn.title = "Delete";
+      delBtn.setAttribute("aria-label", "Delete " + folder.name);
+      delBtn.addEventListener("click", function (e) { e.stopPropagation(); deleteFolder(folder.id); });
+      row.appendChild(delBtn);
+
+      folderTreeEl.appendChild(row);
+
+      var children = folders.filter(function (f) { return f.parentId === folder.id; })
+        .sort(function (a, b) { return a.name.localeCompare(b.name); });
+      children.forEach(function (child) { renderNode(child, depth + 1); });
+    }
+
+    folders.filter(function (f) { return !f.parentId; })
+      .sort(function (a, b) { return a.name.localeCompare(b.name); })
+      .forEach(function (f) { renderNode(f, 0); });
+  }
+
   function createDatasetRow(ds) {
     var frag = rowTemplate.content.cloneNode(true);
     var row = frag.querySelector(".spectra-dataset-row");
@@ -1113,19 +1411,7 @@
   });
 
   saveProjectBtn.addEventListener("click", function () {
-    var project = {
-      version: 1,
-      spectrumMode: spectrumMode,
-      axisUnit: axisUnitSelect.value,
-      custom: custom,
-      datasets: datasets.map(function (d) {
-        return {
-          label: d.label, color: d.color, colorAuto: d.colorAuto, paletteIndex: d.paletteIndex,
-          offset: d.offset, normalize: d.normalize, lineStyle: d.lineStyle, visible: d.visible,
-          colUnit: d.colUnit, source: d.source, xNm: d.xNm, y: d.y
-        };
-      })
-    };
+    var project = buildProjectPayload();
     downloadBlob("spectrawave-project.json", new Blob([JSON.stringify(project)], { type: "application/json;charset=utf-8;" }));
   });
 
@@ -1145,57 +1431,9 @@
         setStatus("That doesn't look like a SpectraWave project file.", true);
         return;
       }
-
-      datasets.length = 0;
-      datasetsContainer.innerHTML = "";
-
-      var c = project.custom || {};
-      titleInput.value = c.title || "";
-      bgModeSelect.value = c.bgMode || "transparent";
-      bgCustomInput.value = c.bgCustomColor || "#ffffff";
-      bgCustomWrap.hidden = bgModeSelect.value !== "custom";
-      closedBoxInput.checked = c.closedBox !== false;
-      xGridInput.checked = c.showXGrid !== false;
-      yGridInput.checked = c.showYGrid !== false;
-      xMinInput.value = c.xMin != null ? c.xMin : "";
-      xMaxInput.value = c.xMax != null ? c.xMax : "";
-      xStepInput.value = c.xStep != null ? c.xStep : "";
-      yMinInput.value = c.yMin != null ? c.yMin : "";
-      yMaxInput.value = c.yMax != null ? c.yMax : "";
-      yStepInput.value = c.yStep != null ? c.yStep : "";
-      readCustom();
-
-      spectrumMode = project.spectrumMode === "fluorescence" ? "fluorescence" : "absorption";
-      modeSelect.value = spectrumMode;
-      if (project.axisUnit) axisUnitSelect.value = project.axisUnit;
-
-      project.datasets.forEach(function (saved) {
-        var added = addDataset();
-        var ds = added.ds, row = added.row;
-        ds.xNm = saved.xNm || [];
-        ds.y = saved.y || [];
-        ds.label = saved.label || "";
-        ds.color = saved.color || ds.color;
-        ds.colorAuto = !!saved.colorAuto;
-        ds.offset = saved.offset || 0;
-        ds.normalize = saved.normalize || "none";
-        ds.lineStyle = saved.lineStyle || "solid";
-        ds.visible = saved.visible !== false;
-        ds.colUnit = saved.colUnit || "nm";
-        ds.source = saved.source || null;
-
-        row.querySelector('[data-role="color"]').value = ds.color;
-        row.querySelector('[data-role="legend"]').value = ds.label;
-        row.querySelector('[data-role="col-unit"]').value = ds.colUnit;
-        row.querySelector('[data-role="offset"]').value = ds.offset;
-        row.querySelector('[data-role="normalize"]').value = ds.normalize;
-        row.querySelector('[data-role="line-style"]').value = ds.lineStyle;
-        row.querySelector('[data-role="visible"]').checked = ds.visible;
-      });
-
+      restoreProjectPayload(project);
       setStatus("Loaded project (" + datasets.length + " spectra).", false);
       loadProjectInput.value = "";
-      draw();
     };
     reader.onerror = function () { setStatus("Could not read that file.", true); };
     reader.readAsText(file);
@@ -1210,8 +1448,89 @@
     draw();
   });
 
+  newFolderBtn.addEventListener("click", function () {
+    createFolder(null);
+  });
+
+  exportAllBtn.addEventListener("click", function () {
+    if (!folders.length) { setFolderStatus("No projects to export yet.", true); return; }
+    persistActiveFolder();
+    var bundle = { version: 2, folders: folders };
+    downloadBlob("spectrawave-workspace.json", new Blob([JSON.stringify(bundle)], { type: "application/json;charset=utf-8;" }));
+  });
+
+  importAllInput.addEventListener("change", function () {
+    var file = importAllInput.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      var bundle;
+      try {
+        bundle = JSON.parse(String(reader.result));
+      } catch (e) {
+        setFolderStatus("Couldn't read that workspace file.", true);
+        return;
+      }
+      if (!bundle || !Array.isArray(bundle.folders)) {
+        setFolderStatus("That doesn't look like a SpectraWave workspace file.", true);
+        return;
+      }
+      if (!window.confirm("Import " + bundle.folders.length + " folder(s)? This merges with your existing projects.")) {
+        importAllInput.value = "";
+        return;
+      }
+      bundle.folders.forEach(function (f) {
+        var idx = folders.findIndex(function (existing) { return existing.id === f.id; });
+        if (idx !== -1) folders[idx] = f; else folders.push(f);
+        dbPutFolder(f);
+      });
+      renderFolderTree();
+      setFolderStatus("Imported " + bundle.folders.length + " folder(s).", false);
+      importAllInput.value = "";
+    };
+    reader.onerror = function () { setFolderStatus("Could not read that file.", true); };
+    reader.readAsText(file);
+  });
+
   window.addEventListener("resize", draw);
 
-  var first = addDataset();
-  first.row.querySelector('[data-role="example-btn"]').click();
+  function loadDefaultDemoView() {
+    var first = addDataset();
+    first.row.querySelector('[data-role="example-btn"]').click();
+  }
+
+  function initFoldersAndDefaultView() {
+    if (typeof indexedDB === "undefined") {
+      dbAvailable = false;
+      setFolderStatus("Your browser doesn't support saved projects locally — use Save/Load project files instead.", false);
+      loadDefaultDemoView();
+      renderFolderTree();
+      return;
+    }
+    openDb().then(function (db) {
+      dbAvailable = true;
+      dbInstance = db;
+      return dbGetAllFolders();
+    }).then(function (loaded) {
+      folders = loaded || [];
+      if (!folders.length) {
+        loadDefaultDemoView();
+      } else {
+        var lastId = null;
+        try { lastId = localStorage.getItem("spectrawave-last-folder"); } catch (e) { /* ignore */ }
+        var target = folders.find(function (f) { return f.id === lastId; }) ||
+          folders.slice().sort(function (a, b) { return b.updatedAt - a.updatedAt; })[0];
+        activeFolderId = target.id;
+        restoreProjectPayload(target.data);
+      }
+      renderFolderTree();
+    }).catch(function () {
+      dbAvailable = false;
+      setFolderStatus("Couldn't open local storage for projects — use Save/Load project files instead.", false);
+      loadDefaultDemoView();
+      renderFolderTree();
+    });
+  }
+
+  initFoldersAndDefaultView();
 })();

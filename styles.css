@@ -555,6 +555,124 @@ td:first-child {
   transform: translateX(-50%);
 }
 
+.spectra-explorer-layout {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.spectra-folder-sidebar {
+  position: sticky;
+  top: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem;
+  background: var(--bg);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+
+.spectra-folder-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.spectra-folder-toolbar .chart-settings-group-label {
+  margin: 0;
+}
+
+.spectra-folder-btn-sm {
+  font-size: 0.76rem;
+  padding: 0.35rem 0.6rem;
+}
+
+.spectra-folder-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 0.6rem;
+}
+
+.spectra-folder-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: 6px;
+}
+
+.spectra-folder-row.active {
+  background: var(--bg-elev);
+}
+
+.spectra-folder-name-btn {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  padding: 0.4rem 0.3rem;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.spectra-folder-row.active .spectra-folder-name-btn {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.spectra-folder-name-btn:hover {
+  background: var(--bg-elev);
+}
+
+.spectra-folder-icon-btn {
+  flex: 0 0 auto;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 0.82rem;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  line-height: 1;
+}
+
+.spectra-folder-icon-btn:hover {
+  background: var(--bg-elev);
+  color: var(--text);
+}
+
+.spectra-folder-delete-btn:hover {
+  color: var(--danger);
+}
+
+.spectra-folder-empty-hint {
+  margin: 0;
+  font-family: var(--sans);
+}
+
+.spectra-folder-io-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--border);
+  padding-top: 0.6rem;
+}
+
+.spectra-folder-status {
+  margin: 0.6rem 0 0;
+}
+
 .spectra-top-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 400px;
@@ -565,6 +683,16 @@ td:first-child {
 
 .chart-settings-grid-3col {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 1300px) {
+  .spectra-explorer-layout {
+    grid-template-columns: 1fr;
+  }
+  .spectra-folder-sidebar {
+    position: static;
+    max-height: none;
+  }
 }
 
 @media (max-width: 1000px) {
