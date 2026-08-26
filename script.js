@@ -520,7 +520,7 @@
     var step = isBottom ? -24 : 24;
     return L.visible.map(function (d) {
       var legendText = (d.label && d.label.trim()) || "Spectrum";
-      var boxW = legendChipWidth(mctx, legendText, "11px " + fontFamily);
+      var boxW = legendChipWidth(mctx, legendText, "12px " + fontFamily);
       var bx = isLeft ? L.left + 6 : L.right - boxW - 6;
       var by = y;
       y += step;
@@ -615,183 +615,199 @@
   function draw() {
     scheduleFolderPersist();
     var dims = layout();
-    var width = dims.width, height = dims.height;
+    renderChart(ctx, dims.width, dims.height, true);
+  }
+
+  function renderChart(targetCtx, width, height, isPrimary) {
     var bottomUnit = axisUnitSelect.value;
     var theme = readThemeColors();
     var fontFamily = getComputedStyle(document.body).fontFamily;
 
-    ctx.clearRect(0, 0, width, height);
+    targetCtx.clearRect(0, 0, width, height);
 
     var bgColor = resolveBackgroundColor(custom.bgMode, custom.bgCustomColor, theme.bgElev);
     if (bgColor) {
-      ctx.fillStyle = bgColor;
-      ctx.fillRect(0, 0, width, height);
+      targetCtx.fillStyle = bgColor;
+      targetCtx.fillRect(0, 0, width, height);
     }
 
     var L = computeChartLayout(width, height, datasets, bottomUnit, custom);
-    plotBox = L;
+    if (isPrimary) plotBox = L;
 
     if (!L.visible.length) {
-      ctx.fillStyle = theme.text;
-      ctx.font = "13px " + fontFamily;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("No spectra loaded", width / 2, height / 2);
+      targetCtx.fillStyle = theme.text;
+      targetCtx.font = "13px " + fontFamily;
+      targetCtx.textAlign = "center";
+      targetCtx.textBaseline = "middle";
+      targetCtx.fillText("No spectra loaded", width / 2, height / 2);
       return;
     }
 
-    ctx.font = "11px " + fontFamily;
-    ctx.textAlign = "right";
-    ctx.textBaseline = "middle";
+    targetCtx.font = "12px " + fontFamily;
+    targetCtx.textAlign = "right";
+    targetCtx.textBaseline = "middle";
     L.yTicks.forEach(function (t) {
       if (custom.showYGrid) {
-        ctx.beginPath();
-        ctx.moveTo(L.left, t.px);
-        ctx.lineTo(L.right, t.px);
-        ctx.strokeStyle = theme.grid;
-        ctx.globalAlpha = custom.yGridOpacity;
-        ctx.stroke();
-        ctx.globalAlpha = 1;
+        targetCtx.beginPath();
+        targetCtx.moveTo(L.left, t.px);
+        targetCtx.lineTo(L.right, t.px);
+        targetCtx.strokeStyle = theme.grid;
+        targetCtx.globalAlpha = custom.yGridOpacity;
+        targetCtx.stroke();
+        targetCtx.globalAlpha = 1;
       }
-      ctx.fillStyle = theme.text;
-      ctx.fillText(t.value.toFixed(2), L.left - 8, t.px);
+      targetCtx.fillStyle = theme.text;
+      targetCtx.fillText(t.value.toFixed(2), L.left - 8, t.px);
       if (custom.closedBox) {
-        ctx.beginPath();
-        ctx.moveTo(L.right, t.px);
-        ctx.lineTo(L.right - 5, t.px);
-        ctx.strokeStyle = theme.text;
-        ctx.globalAlpha = 0.6;
-        ctx.stroke();
-        ctx.globalAlpha = 1;
+        targetCtx.beginPath();
+        targetCtx.moveTo(L.right, t.px);
+        targetCtx.lineTo(L.right - 5, t.px);
+        targetCtx.strokeStyle = theme.text;
+        targetCtx.globalAlpha = 0.6;
+        targetCtx.stroke();
+        targetCtx.globalAlpha = 1;
       }
     });
 
-    ctx.textAlign = "center";
-    ctx.textBaseline = "top";
+    targetCtx.textAlign = "center";
+    targetCtx.textBaseline = "top";
     L.xTicks.forEach(function (t) {
       if (custom.showXGrid) {
-        ctx.beginPath();
-        ctx.moveTo(t.px, L.top);
-        ctx.lineTo(t.px, L.bottom);
-        ctx.strokeStyle = theme.grid;
-        ctx.globalAlpha = custom.xGridOpacity;
-        ctx.stroke();
-        ctx.globalAlpha = 1;
+        targetCtx.beginPath();
+        targetCtx.moveTo(t.px, L.top);
+        targetCtx.lineTo(t.px, L.bottom);
+        targetCtx.strokeStyle = theme.grid;
+        targetCtx.globalAlpha = custom.xGridOpacity;
+        targetCtx.stroke();
+        targetCtx.globalAlpha = 1;
       }
-      ctx.fillStyle = theme.text;
-      ctx.fillText(formatVal(t.value, L.bottomUnit), t.px, L.bottom + 8);
+      targetCtx.fillStyle = theme.text;
+      targetCtx.fillText(formatVal(t.value, L.bottomUnit), t.px, L.bottom + 8);
     });
 
-    ctx.textBaseline = "bottom";
+    targetCtx.textBaseline = "bottom";
     L.topTicks.forEach(function (t) {
-      ctx.beginPath();
-      ctx.moveTo(t.px, L.top);
-      ctx.lineTo(t.px, L.top - 5);
-      ctx.strokeStyle = theme.text;
-      ctx.globalAlpha = 0.6;
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = theme.text;
-      ctx.fillText(formatVal(t.value, L.topUnit), t.px, L.top - 7);
+      targetCtx.beginPath();
+      targetCtx.moveTo(t.px, L.top);
+      targetCtx.lineTo(t.px, L.top - 5);
+      targetCtx.strokeStyle = theme.text;
+      targetCtx.globalAlpha = 0.6;
+      targetCtx.stroke();
+      targetCtx.globalAlpha = 1;
+      targetCtx.fillStyle = theme.text;
+      targetCtx.fillText(formatVal(t.value, L.topUnit), t.px, L.top - 7);
     });
 
-    ctx.strokeStyle = theme.grid;
-    ctx.globalAlpha = 1;
-    ctx.beginPath();
-    ctx.moveTo(L.left, L.top);
-    ctx.lineTo(L.left, L.bottom);
-    ctx.lineTo(L.right, L.bottom);
+    targetCtx.strokeStyle = theme.grid;
+    targetCtx.globalAlpha = 1;
+    targetCtx.beginPath();
+    targetCtx.moveTo(L.left, L.top);
+    targetCtx.lineTo(L.left, L.bottom);
+    targetCtx.lineTo(L.right, L.bottom);
     if (custom.closedBox) {
-      ctx.lineTo(L.right, L.top);
-      ctx.lineTo(L.left, L.top);
+      targetCtx.lineTo(L.right, L.top);
+      targetCtx.lineTo(L.left, L.top);
     }
-    ctx.stroke();
+    targetCtx.stroke();
 
-    ctx.fillStyle = theme.strongText;
-    ctx.font = "12px " + fontFamily;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "alphabetic";
-    ctx.fillText(xAxisTitle(L.bottomUnit), (L.left + L.right) / 2, height - 8);
-    ctx.fillText(unitLabel(L.topUnit), (L.left + L.right) / 2, 32);
+    targetCtx.fillStyle = theme.strongText;
+    targetCtx.font = "13px " + fontFamily;
+    targetCtx.textAlign = "center";
+    targetCtx.textBaseline = "alphabetic";
+    targetCtx.fillText(xAxisTitle(L.bottomUnit), (L.left + L.right) / 2, height - 8);
+    targetCtx.fillText(unitLabel(L.topUnit), (L.left + L.right) / 2, 32);
 
-    ctx.save();
-    ctx.translate(14, (L.top + L.bottom) / 2);
-    ctx.rotate(-Math.PI / 2);
-    ctx.textAlign = "center";
-    ctx.fillText(yAxisTitle(), 0, 0);
-    ctx.restore();
+    targetCtx.save();
+    targetCtx.translate(14, (L.top + L.bottom) / 2);
+    targetCtx.rotate(-Math.PI / 2);
+    targetCtx.textAlign = "center";
+    targetCtx.fillText(yAxisTitle(), 0, 0);
+    targetCtx.restore();
 
     if (custom.title && custom.title.trim()) {
-      ctx.fillStyle = theme.strongText;
-      ctx.font = "bold 13px " + fontFamily;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "alphabetic";
-      ctx.fillText(custom.title.trim(), width / 2, 16);
+      targetCtx.fillStyle = theme.strongText;
+      targetCtx.font = "bold 14px " + fontFamily;
+      targetCtx.textAlign = "center";
+      targetCtx.textBaseline = "alphabetic";
+      targetCtx.fillText(custom.title.trim(), width / 2, 16);
     }
 
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(L.left, L.top, L.plotW, L.plotH);
-    ctx.clip();
+    targetCtx.save();
+    targetCtx.beginPath();
+    targetCtx.rect(L.left, L.top, L.plotW, L.plotH);
+    targetCtx.clip();
     L.visible.forEach(function (d) {
       var dy = displayY(d);
-      ctx.beginPath();
+      targetCtx.beginPath();
       d.xNm.forEach(function (nm, i) {
         var xv = convertFromNm(nm, L.bottomUnit);
         var px = L.xPix(xv), py = L.yPix(dy[i]);
-        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        if (i === 0) targetCtx.moveTo(px, py); else targetCtx.lineTo(px, py);
       });
-      ctx.strokeStyle = d.color;
-      ctx.lineWidth = 2;
-      ctx.setLineDash(dashArrayFor(d.lineStyle));
-      ctx.stroke();
-      ctx.setLineDash([]);
+      targetCtx.strokeStyle = d.color;
+      targetCtx.lineWidth = 2.25;
+      targetCtx.setLineDash(dashArrayFor(d.lineStyle));
+      targetCtx.stroke();
+      targetCtx.setLineDash([]);
 
-      ctx.lineTo(L.xPix(convertFromNm(d.xNm[d.xNm.length - 1], L.bottomUnit)), L.bottom);
-      ctx.lineTo(L.xPix(convertFromNm(d.xNm[0], L.bottomUnit)), L.bottom);
-      ctx.closePath();
-      ctx.fillStyle = d.color;
-      ctx.globalAlpha = 0.1;
-      ctx.fill();
-      ctx.globalAlpha = 1;
+      targetCtx.lineTo(L.xPix(convertFromNm(d.xNm[d.xNm.length - 1], L.bottomUnit)), L.bottom);
+      targetCtx.lineTo(L.xPix(convertFromNm(d.xNm[0], L.bottomUnit)), L.bottom);
+      targetCtx.closePath();
+      targetCtx.fillStyle = d.color;
+      targetCtx.globalAlpha = 0.1;
+      targetCtx.fill();
+      targetCtx.globalAlpha = 1;
     });
-    ctx.restore();
+    targetCtx.restore();
 
-    ctx.font = "10px " + fontFamily;
+    targetCtx.font = "11px " + fontFamily;
     computePeakMarkers(L).forEach(function (m) {
-      ctx.beginPath();
-      ctx.moveTo(m.px, m.py - 6);
-      ctx.lineTo(m.px - 5, m.py - 14);
-      ctx.lineTo(m.px + 5, m.py - 14);
-      ctx.closePath();
-      ctx.fillStyle = m.d.color;
-      ctx.fill();
-      ctx.fillStyle = theme.strongText;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "bottom";
-      ctx.fillText(m.label, m.px, m.py - 16);
+      targetCtx.beginPath();
+      targetCtx.moveTo(m.px, m.py - 6);
+      targetCtx.lineTo(m.px - 5, m.py - 14);
+      targetCtx.lineTo(m.px + 5, m.py - 14);
+      targetCtx.closePath();
+      targetCtx.fillStyle = m.d.color;
+      targetCtx.fill();
+      targetCtx.fillStyle = theme.strongText;
+      targetCtx.textAlign = "center";
+      targetCtx.textBaseline = "bottom";
+      targetCtx.fillText(m.label, m.px, m.py - 16);
     });
 
-    ctx.font = "11px " + fontFamily;
-    computeLegendLayout(L, ctx, fontFamily, custom.legendPosition).forEach(function (item) {
+    targetCtx.font = "12px " + fontFamily;
+    computeLegendLayout(L, targetCtx, fontFamily, custom.legendPosition).forEach(function (item) {
       var d = item.d, bx = item.bx, by = item.by, boxW = item.boxW;
-      ctx.fillStyle = theme.bgElev;
-      ctx.globalAlpha = 0.85;
-      ctx.fillRect(bx, by, boxW, 20);
-      ctx.globalAlpha = 1;
-      ctx.strokeStyle = d.color;
-      ctx.lineWidth = 2;
-      ctx.setLineDash(dashArrayFor(d.lineStyle));
-      ctx.beginPath();
-      ctx.moveTo(bx + 6, by + 10);
-      ctx.lineTo(bx + 20, by + 10);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.fillStyle = theme.strongText;
-      ctx.textAlign = "left";
-      ctx.textBaseline = "middle";
-      ctx.fillText(item.legendText, bx + 26, by + 10);
+      targetCtx.fillStyle = theme.bgElev;
+      targetCtx.globalAlpha = 0.85;
+      targetCtx.fillRect(bx, by, boxW, 20);
+      targetCtx.globalAlpha = 1;
+      targetCtx.strokeStyle = d.color;
+      targetCtx.lineWidth = 2.25;
+      targetCtx.setLineDash(dashArrayFor(d.lineStyle));
+      targetCtx.beginPath();
+      targetCtx.moveTo(bx + 6, by + 10);
+      targetCtx.lineTo(bx + 20, by + 10);
+      targetCtx.stroke();
+      targetCtx.setLineDash([]);
+      targetCtx.fillStyle = theme.strongText;
+      targetCtx.textAlign = "left";
+      targetCtx.textBaseline = "middle";
+      targetCtx.fillText(item.legendText, bx + 26, by + 10);
     });
+  }
+
+  var EXPORT_SCALE = 3;
+
+  function renderHighResPngBlob(callback) {
+    var cssWidth = canvas.clientWidth || 600, cssHeight = 360;
+    var off = document.createElement("canvas");
+    off.width = cssWidth * EXPORT_SCALE;
+    off.height = cssHeight * EXPORT_SCALE;
+    var offCtx = off.getContext("2d");
+    offCtx.setTransform(EXPORT_SCALE, 0, 0, EXPORT_SCALE, 0, 0);
+    renderChart(offCtx, cssWidth, cssHeight, false);
+    off.toBlob(callback);
   }
 
   function buildSvgString(width, height, dsList, bottomUnit, customSettings, theme) {
@@ -816,7 +832,7 @@
       if (customSettings.showYGrid) {
         parts.push('<line x1="' + L.left + '" y1="' + t.px + '" x2="' + L.right + '" y2="' + t.px + '" stroke="' + theme.grid + '" stroke-opacity="' + customSettings.yGridOpacity + '"/>');
       }
-      parts.push('<text x="' + (L.left - 8) + '" y="' + t.px + '" text-anchor="end" dominant-baseline="middle" fill="' + theme.text + '" font-size="11">' + t.value.toFixed(2) + '</text>');
+      parts.push('<text x="' + (L.left - 8) + '" y="' + t.px + '" text-anchor="end" dominant-baseline="middle" fill="' + theme.text + '" font-size="12">' + t.value.toFixed(2) + '</text>');
       if (customSettings.closedBox) {
         parts.push('<line x1="' + L.right + '" y1="' + t.px + '" x2="' + (L.right - 5) + '" y2="' + t.px + '" stroke="' + theme.text + '" stroke-opacity="0.6"/>');
       }
@@ -826,24 +842,24 @@
       if (customSettings.showXGrid) {
         parts.push('<line x1="' + t.px + '" y1="' + L.top + '" x2="' + t.px + '" y2="' + L.bottom + '" stroke="' + theme.grid + '" stroke-opacity="' + customSettings.xGridOpacity + '"/>');
       }
-      parts.push('<text x="' + t.px + '" y="' + (L.bottom + 8) + '" text-anchor="middle" dominant-baseline="hanging" fill="' + theme.text + '" font-size="11">' + escapeHtml(formatVal(t.value, L.bottomUnit)) + '</text>');
+      parts.push('<text x="' + t.px + '" y="' + (L.bottom + 8) + '" text-anchor="middle" dominant-baseline="hanging" fill="' + theme.text + '" font-size="12">' + escapeHtml(formatVal(t.value, L.bottomUnit)) + '</text>');
     });
 
     L.topTicks.forEach(function (t) {
       parts.push('<line x1="' + t.px + '" y1="' + L.top + '" x2="' + t.px + '" y2="' + (L.top - 5) + '" stroke="' + theme.text + '" stroke-opacity="0.6"/>');
-      parts.push('<text x="' + t.px + '" y="' + (L.top - 7) + '" text-anchor="middle" fill="' + theme.text + '" font-size="11">' + escapeHtml(formatVal(t.value, L.topUnit)) + '</text>');
+      parts.push('<text x="' + t.px + '" y="' + (L.top - 7) + '" text-anchor="middle" fill="' + theme.text + '" font-size="12">' + escapeHtml(formatVal(t.value, L.topUnit)) + '</text>');
     });
 
     var boxPath = "M" + L.left + " " + L.top + " L" + L.left + " " + L.bottom + " L" + L.right + " " + L.bottom;
     if (customSettings.closedBox) boxPath += " L" + L.right + " " + L.top + " L" + L.left + " " + L.top;
     parts.push('<path d="' + boxPath + '" fill="none" stroke="' + theme.grid + '"/>');
 
-    parts.push('<text x="' + ((L.left + L.right) / 2) + '" y="' + (height - 8) + '" text-anchor="middle" fill="' + theme.strongText + '" font-size="12">' + escapeHtml(xAxisTitle(L.bottomUnit)) + '</text>');
-    parts.push('<text x="' + ((L.left + L.right) / 2) + '" y="32" text-anchor="middle" fill="' + theme.strongText + '" font-size="12">' + escapeHtml(unitLabel(L.topUnit)) + '</text>');
-    parts.push('<text x="14" y="' + ((L.top + L.bottom) / 2) + '" text-anchor="middle" fill="' + theme.strongText + '" font-size="12" transform="rotate(-90 14 ' + ((L.top + L.bottom) / 2) + ')">' + escapeHtml(yAxisTitle()) + '</text>');
+    parts.push('<text x="' + ((L.left + L.right) / 2) + '" y="' + (height - 8) + '" text-anchor="middle" fill="' + theme.strongText + '" font-size="13">' + escapeHtml(xAxisTitle(L.bottomUnit)) + '</text>');
+    parts.push('<text x="' + ((L.left + L.right) / 2) + '" y="32" text-anchor="middle" fill="' + theme.strongText + '" font-size="13">' + escapeHtml(unitLabel(L.topUnit)) + '</text>');
+    parts.push('<text x="14" y="' + ((L.top + L.bottom) / 2) + '" text-anchor="middle" fill="' + theme.strongText + '" font-size="13" transform="rotate(-90 14 ' + ((L.top + L.bottom) / 2) + ')">' + escapeHtml(yAxisTitle()) + '</text>');
 
     if (customSettings.title && customSettings.title.trim()) {
-      parts.push('<text x="' + (width / 2) + '" y="16" text-anchor="middle" fill="' + theme.strongText + '" font-size="13" font-weight="bold">' + escapeHtml(customSettings.title.trim()) + '</text>');
+      parts.push('<text x="' + (width / 2) + '" y="16" text-anchor="middle" fill="' + theme.strongText + '" font-size="14" font-weight="bold">' + escapeHtml(customSettings.title.trim()) + '</text>');
     }
 
     var clipId = "spectra-clip-" + Date.now();
@@ -861,13 +877,13 @@
       var dash = dashArrayFor(d.lineStyle);
       var dashAttr = dash.length ? ' stroke-dasharray="' + dash.join(",") + '"' : "";
       parts.push('<polygon points="' + fillPts + '" fill="' + d.color + '" fill-opacity="0.1"/>');
-      parts.push('<polyline points="' + linePts + '" fill="none" stroke="' + d.color + '" stroke-width="2"' + dashAttr + '/>');
+      parts.push('<polyline points="' + linePts + '" fill="none" stroke="' + d.color + '" stroke-width="2.25"' + dashAttr + '/>');
     });
     parts.push('</g>');
 
     computePeakMarkers(L).forEach(function (m) {
       parts.push('<polygon points="' + m.px + ',' + (m.py - 6) + ' ' + (m.px - 5) + ',' + (m.py - 14) + ' ' + (m.px + 5) + ',' + (m.py - 14) + '" fill="' + m.d.color + '"/>');
-      parts.push('<text x="' + m.px + '" y="' + (m.py - 16) + '" text-anchor="middle" fill="' + theme.strongText + '" font-size="10">' + escapeHtml(m.label) + '</text>');
+      parts.push('<text x="' + m.px + '" y="' + (m.py - 16) + '" text-anchor="middle" fill="' + theme.strongText + '" font-size="11">' + escapeHtml(m.label) + '</text>');
     });
 
     computeLegendLayout(L, measureCtx, fontFamily, customSettings.legendPosition).forEach(function (item) {
@@ -875,8 +891,8 @@
       var legendDash = dashArrayFor(d.lineStyle);
       var legendDashAttr = legendDash.length ? ' stroke-dasharray="' + legendDash.join(",") + '"' : "";
       parts.push('<rect x="' + bx + '" y="' + by + '" width="' + boxW + '" height="20" fill="' + theme.bgElev + '" fill-opacity="0.85"/>');
-      parts.push('<line x1="' + (bx + 6) + '" y1="' + (by + 10) + '" x2="' + (bx + 20) + '" y2="' + (by + 10) + '" stroke="' + d.color + '" stroke-width="2"' + legendDashAttr + '/>');
-      parts.push('<text x="' + (bx + 26) + '" y="' + (by + 10) + '" dominant-baseline="middle" fill="' + theme.strongText + '" font-size="11">' + escapeHtml(item.legendText) + '</text>');
+      parts.push('<line x1="' + (bx + 6) + '" y1="' + (by + 10) + '" x2="' + (bx + 20) + '" y2="' + (by + 10) + '" stroke="' + d.color + '" stroke-width="2.25"' + legendDashAttr + '/>');
+      parts.push('<text x="' + (bx + 26) + '" y="' + (by + 10) + '" dominant-baseline="middle" fill="' + theme.strongText + '" font-size="12">' + escapeHtml(item.legendText) + '</text>');
     });
 
     parts.push('</svg>');
@@ -1512,7 +1528,7 @@
   });
 
   pngBtn.addEventListener("click", function () {
-    canvas.toBlob(function (blob) {
+    renderHighResPngBlob(function (blob) {
       downloadBlob("absorption-spectrum.png", blob);
     });
   });
@@ -1569,7 +1585,7 @@
     var files = [];
 
     function addImageAndShare() {
-      canvas.toBlob(function (blob) {
+      renderHighResPngBlob(function (blob) {
         if (blob) files.push(new File([blob], "spectrum-chart.png", { type: "image/png" }));
         doShare();
       });
