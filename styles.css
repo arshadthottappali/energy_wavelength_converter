@@ -35,6 +35,10 @@ html, body {
   line-height: 1.55;
 }
 
+body {
+  overflow-x: hidden;
+}
+
 .wrap {
   max-width: 1200px;
   margin: 0 auto;
@@ -336,14 +340,23 @@ td:first-child {
 }
 
 .spectra-dataset-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.6rem;
   padding: 0.9rem;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--bg);
+}
+
+.spectra-row-strip {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  gap: 0.6rem;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.spectra-row-strip > * {
+  flex-shrink: 0;
 }
 
 .spectra-color-input {
@@ -354,12 +367,10 @@ td:first-child {
   border-radius: 6px;
   background: var(--bg-elev);
   cursor: pointer;
-  flex-shrink: 0;
 }
 
 .spectra-legend-input {
-  flex: 1 1 160px;
-  min-width: 120px;
+  width: 150px;
   font-family: var(--mono);
   font-size: 0.9rem;
   padding: 0.55rem 0.65rem;
@@ -374,18 +385,11 @@ td:first-child {
   border-color: var(--accent);
 }
 
-.spectra-row-controls {
-  display: flex;
-  gap: 0.6rem;
-  flex-wrap: wrap;
-  align-items: flex-end;
-}
-
-.spectra-row-controls .field {
+.spectra-row-strip .field {
   min-width: 110px;
 }
 
-.spectra-row-controls input[type="number"] {
+.spectra-row-strip .field input[type="number"] {
   font-family: var(--mono);
   font-size: 0.9rem;
   padding: 0.55rem 0.6rem;
@@ -393,11 +397,11 @@ td:first-child {
   border: 1px solid var(--border);
   border-radius: 6px;
   color: var(--text);
-  width: 90px;
+  width: 80px;
   outline: none;
 }
 
-.spectra-row-controls select {
+.spectra-row-strip .field select {
   font-size: 0.85rem;
   padding: 0.55rem 0.6rem;
 }
@@ -409,6 +413,10 @@ td:first-child {
   font-size: 0.85rem;
   color: var(--text-dim);
   white-space: nowrap;
+}
+
+.spectra-row-strip .spectra-checkbox-field {
+  padding-bottom: 0.6rem;
 }
 
 .chart-settings-group {
@@ -436,12 +444,6 @@ td:first-child {
   margin-top: 0.75rem;
 }
 
-.spectra-row-actions {
-  display: flex;
-  gap: 0.5rem;
-  margin-left: auto;
-}
-
 .spectra-remove-btn {
   color: var(--danger);
   border-color: var(--danger);
@@ -454,6 +456,7 @@ td:first-child {
 
 .spectra-paste-textarea {
   width: 100%;
+  margin-top: 0.75rem;
   min-height: 76px;
   font-family: var(--mono);
   font-size: 0.85rem;
@@ -470,19 +473,16 @@ td:first-child {
   border-color: var(--accent);
 }
 
+.spectra-dataset-row [data-role="paste-load-btn"] {
+  margin-top: 0.5rem;
+}
+
 .spectra-row-status {
-  margin: 0;
-  flex-basis: 100%;
+  margin: 0.6rem 0 0;
 }
 
 .spectra-add-btn {
   margin-bottom: 1.25rem;
-}
-
-.spectra-load-row {
-  display: flex;
-  gap: 0.6rem;
-  flex-wrap: wrap;
 }
 
 .file-btn {
@@ -526,6 +526,32 @@ td:first-child {
 
 .chart-settings-grid {
   margin-top: 0.9rem;
+}
+
+.spectra-card {
+  width: 100vw;
+  max-width: 1800px;
+  margin-left: 50%;
+  transform: translateX(-50%);
+}
+
+.spectra-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 460px;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (max-width: 1000px) {
+  .spectra-card {
+    width: 100%;
+    max-width: 100%;
+    margin-left: 0;
+    transform: none;
+  }
+  .spectra-workspace {
+    grid-template-columns: 1fr;
+  }
 }
 
 .spectra-chart-wrap {

@@ -271,138 +271,144 @@
     <p class="section-intro">Plot one or more absorption or steady-state fluorescence spectra with wavelength and energy on paired axes, compare them overlaid or offset like a waterfall plot, and export a publication-ready PNG, SVG, or CSV. Everything runs in your browser — nothing is uploaded to a server, no account needed.</p>
 
     <div class="card spectra-card">
-      <div class="spectra-chart-wrap">
-        <canvas id="spectra-canvas"></canvas>
-        <div id="spectra-tooltip" class="spectra-tooltip"></div>
-      </div>
+      <div class="spectra-workspace">
+        <div class="spectra-left">
+          <div class="spectra-chart-wrap">
+            <canvas id="spectra-canvas"></canvas>
+            <div id="spectra-tooltip" class="spectra-tooltip"></div>
+          </div>
 
-      <p id="spectra-status" class="hint spectra-status" role="status"></p>
+          <p id="spectra-status" class="hint spectra-status" role="status"></p>
 
-      <div class="actions">
-        <button type="button" id="spectra-png-btn" class="btn btn-secondary">Download chart (PNG)</button>
-        <button type="button" id="spectra-svg-btn" class="btn btn-secondary">Download chart (SVG)</button>
-        <button type="button" id="spectra-data-btn" class="btn btn-secondary">Download data (CSV)</button>
-        <button type="button" id="spectra-clear-btn" class="btn btn-secondary spectra-remove-btn">Clear all</button>
-      </div>
-
-      <div class="spectra-global-controls">
-        <label class="field">
-          <span>Spectrum type</span>
-          <select id="spectra-mode">
-            <option value="absorption">Absorption</option>
-            <option value="fluorescence">Fluorescence (steady-state)</option>
-          </select>
-        </label>
-        <label class="field">
-          <span>X-axis unit</span>
-          <select id="spectra-axis-unit">
-            <option value="nm">Wavelength (nm)</option>
-            <option value="eV">Energy (eV)</option>
-            <option value="cm-1">Wavenumber (cm⁻¹)</option>
-          </select>
-        </label>
-      </div>
-
-      <div id="spectra-datasets" class="spectra-datasets"></div>
-      <button type="button" id="spectra-add-dataset-btn" class="btn btn-secondary spectra-add-btn">+ Add spectrum</button>
-      <p class="hint">Each row loads one CSV or pasted block — but a file with wavelength in column 1 and several sample columns after it (e.g. multiple absorbance readings) automatically expands into one spectrum per column, each in its own row. Column headers, if present, become the legend labels. Every row also has its own CSV download (converted to the selected unit, offset excluded). The example spectrum is an illustrative curve for demonstration, not measured data.</p>
-
-      <details class="chart-settings">
-        <summary>Customize chart (title, axes, background, frame)</summary>
-
-        <div class="chart-settings-group">
-          <p class="chart-settings-group-label">Chart</p>
-          <div class="field-grid chart-settings-grid">
-            <label class="field">
-              <span>Chart title</span>
-              <input type="text" id="spectra-title" placeholder="e.g. Fluorescein absorption spectrum">
+          <div class="actions">
+            <label class="file-btn">
+              Upload CSV
+              <input type="file" id="spectra-upload-input" accept=".csv,.tsv,.txt,text/csv" hidden>
             </label>
+            <button type="button" id="spectra-png-btn" class="btn btn-secondary">Download chart (PNG)</button>
+            <button type="button" id="spectra-svg-btn" class="btn btn-secondary">Download chart (SVG)</button>
+            <button type="button" id="spectra-data-btn" class="btn btn-secondary">Download data (CSV)</button>
+            <button type="button" id="spectra-clear-btn" class="btn btn-secondary spectra-remove-btn">Clear all</button>
+          </div>
+        </div>
+
+        <div class="spectra-right">
+          <div class="spectra-global-controls">
             <label class="field">
-              <span>Background</span>
-              <select id="spectra-bg-mode">
-                <option value="transparent">Transparent</option>
-                <option value="white">White</option>
-                <option value="theme">Match page theme</option>
-                <option value="custom">Custom color…</option>
+              <span>Spectrum type</span>
+              <select id="spectra-mode">
+                <option value="absorption">Absorption</option>
+                <option value="fluorescence">Fluorescence (steady-state)</option>
               </select>
             </label>
-            <label class="field" id="spectra-bg-custom-wrap" hidden>
-              <span>Custom background</span>
-              <input type="color" id="spectra-bg-custom" value="#ffffff">
+            <label class="field">
+              <span>X-axis unit</span>
+              <select id="spectra-axis-unit">
+                <option value="nm">Wavelength (nm)</option>
+                <option value="eV">Energy (eV)</option>
+                <option value="cm-1">Wavenumber (cm⁻¹)</option>
+              </select>
             </label>
           </div>
-        </div>
 
-        <div class="chart-settings-group">
-          <p class="chart-settings-group-label">X axis</p>
-          <div class="field-grid chart-settings-grid">
-            <label class="field">
-              <span>X min</span>
-              <input type="number" id="spectra-xmin" placeholder="auto" step="any">
-            </label>
-            <label class="field">
-              <span>X max</span>
-              <input type="number" id="spectra-xmax" placeholder="auto" step="any">
-            </label>
-            <label class="field">
-              <span>X major tick step</span>
-              <input type="number" id="spectra-xstep" placeholder="auto" step="any">
-            </label>
-          </div>
-          <label class="spectra-checkbox-field">
-            <input type="checkbox" id="spectra-xgrid" checked> Show gridlines
-          </label>
-        </div>
+          <div id="spectra-datasets" class="spectra-datasets"></div>
+          <button type="button" id="spectra-add-dataset-btn" class="btn btn-secondary spectra-add-btn">+ Add spectrum</button>
+          <p class="hint">Each row loads one CSV or pasted block — but a file with wavelength in column 1 and several sample columns after it (e.g. multiple absorbance readings) automatically expands into one spectrum per column, each in its own row. Column headers, if present, become the legend labels. Every row also has its own CSV download (converted to the selected unit, offset excluded). The example spectrum is an illustrative curve for demonstration, not measured data.</p>
 
-        <div class="chart-settings-group">
-          <p class="chart-settings-group-label">Y axis</p>
-          <div class="field-grid chart-settings-grid">
-            <label class="field">
-              <span>Y min</span>
-              <input type="number" id="spectra-ymin" placeholder="auto" step="any">
-            </label>
-            <label class="field">
-              <span>Y max</span>
-              <input type="number" id="spectra-ymax" placeholder="auto" step="any">
-            </label>
-            <label class="field">
-              <span>Y major tick step</span>
-              <input type="number" id="spectra-ystep" placeholder="auto" step="any">
-            </label>
-          </div>
-          <label class="spectra-checkbox-field">
-            <input type="checkbox" id="spectra-ygrid" checked> Show gridlines
-          </label>
-        </div>
+          <details class="chart-settings" open>
+            <summary>Customize chart (title, axes, background, frame)</summary>
 
-        <div class="chart-settings-group">
-          <p class="chart-settings-group-label">Frame</p>
-          <label class="spectra-checkbox-field">
-            <input type="checkbox" id="spectra-closed-box" checked> Closed axis box (top &amp; right border + right tick marks)
-          </label>
-        </div>
+            <div class="chart-settings-group">
+              <p class="chart-settings-group-label">Chart</p>
+              <div class="field-grid chart-settings-grid">
+                <label class="field">
+                  <span>Chart title</span>
+                  <input type="text" id="spectra-title" placeholder="e.g. Fluorescein absorption spectrum">
+                </label>
+                <label class="field">
+                  <span>Background</span>
+                  <select id="spectra-bg-mode">
+                    <option value="transparent">Transparent</option>
+                    <option value="white">White</option>
+                    <option value="theme">Match page theme</option>
+                    <option value="custom">Custom color…</option>
+                  </select>
+                </label>
+                <label class="field" id="spectra-bg-custom-wrap" hidden>
+                  <span>Custom background</span>
+                  <input type="color" id="spectra-bg-custom" value="#ffffff">
+                </label>
+              </div>
+            </div>
 
-        <div class="actions">
-          <button type="button" id="spectra-reset-axes-btn" class="btn btn-secondary">Reset to auto</button>
+            <div class="chart-settings-group">
+              <p class="chart-settings-group-label">X axis</p>
+              <div class="field-grid chart-settings-grid">
+                <label class="field">
+                  <span>X min</span>
+                  <input type="number" id="spectra-xmin" placeholder="auto" step="any">
+                </label>
+                <label class="field">
+                  <span>X max</span>
+                  <input type="number" id="spectra-xmax" placeholder="auto" step="any">
+                </label>
+                <label class="field">
+                  <span>X major tick step</span>
+                  <input type="number" id="spectra-xstep" placeholder="auto" step="any">
+                </label>
+              </div>
+              <label class="spectra-checkbox-field">
+                <input type="checkbox" id="spectra-xgrid" checked> Show gridlines
+              </label>
+            </div>
+
+            <div class="chart-settings-group">
+              <p class="chart-settings-group-label">Y axis</p>
+              <div class="field-grid chart-settings-grid">
+                <label class="field">
+                  <span>Y min</span>
+                  <input type="number" id="spectra-ymin" placeholder="auto" step="any">
+                </label>
+                <label class="field">
+                  <span>Y max</span>
+                  <input type="number" id="spectra-ymax" placeholder="auto" step="any">
+                </label>
+                <label class="field">
+                  <span>Y major tick step</span>
+                  <input type="number" id="spectra-ystep" placeholder="auto" step="any">
+                </label>
+              </div>
+              <label class="spectra-checkbox-field">
+                <input type="checkbox" id="spectra-ygrid" checked> Show gridlines
+              </label>
+            </div>
+
+            <div class="chart-settings-group">
+              <p class="chart-settings-group-label">Frame</p>
+              <label class="spectra-checkbox-field">
+                <input type="checkbox" id="spectra-closed-box" checked> Closed axis box (top &amp; right border + right tick marks)
+              </label>
+            </div>
+
+            <div class="actions">
+              <button type="button" id="spectra-reset-axes-btn" class="btn btn-secondary">Reset to auto</button>
+            </div>
+          </details>
         </div>
-      </details>
+      </div>
     </div>
 
     <template id="spectra-dataset-row-template">
       <div class="spectra-dataset-row">
-        <input type="color" data-role="color" class="spectra-color-input" aria-label="Trace color">
-        <input type="text" data-role="legend" class="spectra-legend-input" placeholder="Legend label" aria-label="Legend label">
-        <div class="spectra-load-row">
+        <div class="spectra-row-strip">
+          <input type="color" data-role="color" class="spectra-color-input" aria-label="Trace color">
+          <input type="text" data-role="legend" class="spectra-legend-input" placeholder="Legend label" aria-label="Legend label">
           <button type="button" data-role="example-btn" class="btn btn-secondary">Example</button>
           <label class="file-btn">
             Upload CSV
             <input type="file" data-role="file-input" accept=".csv,.tsv,.txt,text/csv" hidden>
           </label>
           <button type="button" data-role="paste-toggle-btn" class="btn btn-secondary">Paste data</button>
-        </div>
-        <textarea data-role="paste-textarea" class="spectra-paste-textarea" hidden placeholder="Paste columns copied from Excel: wavelength, then one or more sample columns. Extra columns become their own spectrum."></textarea>
-        <button type="button" data-role="paste-load-btn" class="btn btn-secondary" hidden>Load pasted data</button>
-        <div class="spectra-row-controls">
           <label class="field">
             <span>Column 1 is</span>
             <select data-role="col-unit">
@@ -415,14 +421,24 @@
             <span>Y offset</span>
             <input type="number" data-role="offset" value="0" step="any">
           </label>
+          <label class="field">
+            <span>Normalize</span>
+            <select data-role="normalize">
+              <option value="none">None</option>
+              <option value="max">Divide by max</option>
+              <option value="min">Divide by min</option>
+              <option value="minmax">To 0–1</option>
+              <option value="area">Unit area</option>
+            </select>
+          </label>
           <label class="spectra-checkbox-field">
             <input type="checkbox" data-role="visible" checked> Visible
           </label>
-        </div>
-        <div class="spectra-row-actions">
           <button type="button" data-role="download-btn" class="btn btn-secondary">CSV</button>
           <button type="button" data-role="remove-btn" class="btn btn-secondary spectra-remove-btn">Remove</button>
         </div>
+        <textarea data-role="paste-textarea" class="spectra-paste-textarea" hidden placeholder="Paste columns copied from Excel: wavelength, then one or more sample columns. Extra columns become their own spectrum."></textarea>
+        <button type="button" data-role="paste-load-btn" class="btn btn-secondary" hidden>Load pasted data</button>
         <p data-role="status" class="hint spectra-row-status"></p>
       </div>
     </template>

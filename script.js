@@ -152,6 +152,7 @@
   var svgBtn = document.getElementById("spectra-svg-btn");
   var dataBtn = document.getElementById("spectra-data-btn");
   var clearBtn = document.getElementById("spectra-clear-btn");
+  var globalUploadInput = document.getElementById("spectra-upload-input");
 
   var titleInput = document.getElementById("spectra-title");
   var bgModeSelect = document.getElementById("spectra-bg-mode");
@@ -258,6 +259,32 @@
 
   function yValueLabel() {
     return spectrumMode === "fluorescence" ? "Intensity" : "Absorbance";
+  }
+
+  function normalizeSeries(y, xNm, mode) {
+    if (mode === "max") {
+      var max = Math.max.apply(null, y);
+      return max ? y.map(function (v) { return v / max; }) : y.slice();
+    }
+    if (mode === "min") {
+      var min = Math.min.apply(null, y);
+      return min ? y.map(function (v) { return v / min; }) : y.slice();
+    }
+    if (mode === "minmax") {
+      var lo = Math.min.apply(null, y), hi = Math.max.apply(null, y), range = hi - lo;
+      return range ? y.map(function (v) { return (v - lo) / range; }) : y.slice();
+    }
+    if (mode === "area") {
+      var auc = 0;
+      for (var i = 1; i < xNm.length; i++) auc += (xNm[i] - xNm[i - 1]) * (y[i] + y[i - 1]) / 2;
+      auc = Math.abs(auc);
+      return auc ? y.map(function (v) { return v / auc; }) : y.slice();
+    }
+    return y.slice();
+  }
+
+  function displayY(ds) {
+    return normalizeSeries(ds.y, ds.xNm, ds.normalize).map(function (v) { return v + ds.offset; });
   }
 
   function niceNum(range, round) {
@@ -376,11 +403,12 @@
     var autoXMin = Infinity, autoXMax = -Infinity;
     var autoYMin = 0, autoYMax = -Infinity;
     visible.forEach(function (d) {
+      var dy = displayY(d);
       d.xNm.forEach(function (nm, i) {
         var xv = convertFromNm(nm, bottomUnit);
         if (xv < autoXMin) autoXMin = xv;
         if (xv > autoXMax) autoXMax = xv;
-        var yv = d.y[i] + d.offset;
+        var yv = dy[i];
         if (yv > autoYMax) autoYMax = yv;
         if (yv < autoYMin) autoYMin = yv;
       });
@@ -558,10 +586,11 @@
     ctx.rect(L.left, L.top, L.plotW, L.plotH);
     ctx.clip();
     L.visible.forEach(function (d) {
+      var dy = displayY(d);
       ctx.beginPath();
       d.xNm.forEach(function (nm, i) {
         var xv = convertFromNm(nm, L.bottomUnit);
-        var px = L.xPix(xv), py = L.yPix(d.y[i] + d.offset);
+        var px = L.xPix(xv), py = L.yPix(dy[i]);
         if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
       });
       ctx.strokeStyle = d.color;
@@ -658,9 +687,10 @@
     parts.push('<clipPath id="' + clipId + '"><rect x="' + L.left + '" y="' + L.top + '" width="' + L.plotW + '" height="' + L.plotH + '"/></clipPath>');
     parts.push('<g clip-path="url(#' + clipId + ')">');
     L.visible.forEach(function (d) {
+      var dy = displayY(d);
       var linePts = d.xNm.map(function (nm, i) {
         var xv = convertFromNm(nm, L.bottomUnit);
-        return L.xPix(xv) + "," + L.yPix(d.y[i] + d.offset);
+        return L.xPix(xv) + "," + L.yPix(dy[i]);
       }).join(" ");
       var fillPts = linePts +
         " " + L.xPix(convertFromNm(d.xNm[d.xNm.length - 1], L.bottomUnit)) + "," + L.bottom +
@@ -710,7 +740,7 @@
     var lines = [];
     plotBox.visible.forEach(function (d) {
       var idx = nearestIndexIn(d.xNm, nmTarget);
-      var nm = d.xNm[idx], yVal = d.y[idx] + d.offset;
+      var nm = d.xNm[idx], yVal = displayY(d)[idx];
       var ev = convertFromNm(nm, "eV"), cm1 = convertFromNm(nm, "cm-1");
       var legendText = (d.label && d.label.trim()) || "Spectrum";
       lines.push('<span style="color:' + d.color + '">&#9679;</span> ' + escapeHtml(legendText) + ": " +
@@ -810,6 +840,7 @@
       colorAuto: true,
       paletteIndex: idx % OKABE_ITO.length,
       offset: 0,
+      normalize: "none",
       visible: true,
       colUnit: "nm",
       source: null
@@ -836,6 +867,7 @@
     var pasteLoadBtn = row.querySelector('[data-role="paste-load-btn"]');
     var colUnitSelect = row.querySelector('[data-role="col-unit"]');
     var offsetInput = row.querySelector('[data-role="offset"]');
+    var normalizeSelect = row.querySelector('[data-role="normalize"]');
     var visibleInput = row.querySelector('[data-role="visible"]');
     var downloadBtn = row.querySelector('[data-role="download-btn"]');
     var removeBtn = row.querySelector('[data-role="remove-btn"]');
@@ -902,6 +934,11 @@
     offsetInput.addEventListener("input", function () {
       var v = parseFloat(offsetInput.value);
       ds.offset = isFinite(v) ? v : 0;
+      draw();
+    });
+
+    normalizeSelect.addEventListener("change", function () {
+      ds.normalize = normalizeSelect.value;
       draw();
     });
 
@@ -1009,17 +1046,30 @@
     datasets.forEach(function (d) {
       if (!d.visible || !d.xNm.length) return;
       var label = (d.label && d.label.trim()) || "Spectrum";
+      var dy = displayY(d);
       d.xNm.forEach(function (nm, i) {
         var xv = convertFromNm(nm, unit);
         if (xMin != null && xv < xMin - 1e-9) return;
         if (xMax != null && xv > xMax + 1e-9) return;
-        rows.push([label, xv.toFixed(unit === "nm" ? 2 : 4), d.y[i] + d.offset]);
+        rows.push([label, xv.toFixed(unit === "nm" ? 2 : 4), dy[i]]);
         any = true;
       });
     });
     if (!any) return;
     var csv = rows.map(function (r) { return r.map(escapeCsvCell).join(","); }).join("\r\n");
     downloadBlob("spectra-visible-" + unit.replace("-", "") + ".csv", new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+  });
+
+  globalUploadInput.addEventListener("change", function () {
+    var file = globalUploadInput.files[0];
+    if (!file) return;
+    var added = addDataset();
+    var rowFileInput = added.row.querySelector('[data-role="file-input"]');
+    var dt = new DataTransfer();
+    dt.items.add(file);
+    rowFileInput.files = dt.files;
+    rowFileInput.dispatchEvent(new Event("change"));
+    globalUploadInput.value = "";
   });
 
   clearBtn.addEventListener("click", function () {
