@@ -145,9 +145,45 @@
   var pngBtn = document.getElementById("spectra-png-btn");
   var csvBtn = document.getElementById("spectra-csv-btn");
 
+  var titleInput = document.getElementById("spectra-title");
+  var legendInput = document.getElementById("spectra-legend");
+  var xMinInput = document.getElementById("spectra-xmin");
+  var xMaxInput = document.getElementById("spectra-xmax");
+  var xStepInput = document.getElementById("spectra-xstep");
+  var yMinInput = document.getElementById("spectra-ymin");
+  var yMaxInput = document.getElementById("spectra-ymax");
+  var yStepInput = document.getElementById("spectra-ystep");
+  var resetAxesBtn = document.getElementById("spectra-reset-axes-btn");
+
   var state = { xNm: [], y: [], label: "" };
+  var custom = { title: "", legend: "", xMin: null, xMax: null, xStep: null, yMin: null, yMax: null, yStep: null };
   var plotBox = null;
-  var padLeft = 58, padRight = 16, padTop = 42, padBottom = 46;
+  var padLeft = 58, padRight = 16, padTop = 56, padBottom = 46;
+
+  function numOrNull(el) {
+    var v = parseFloat(el.value);
+    return isFinite(v) ? v : null;
+  }
+
+  function readCustom() {
+    custom.title = titleInput.value;
+    custom.legend = legendInput.value;
+    custom.xMin = numOrNull(xMinInput);
+    custom.xMax = numOrNull(xMaxInput);
+    custom.xStep = numOrNull(xStepInput);
+    custom.yMin = numOrNull(yMinInput);
+    custom.yMax = numOrNull(yMaxInput);
+    custom.yStep = numOrNull(yStepInput);
+  }
+
+  function stepTicks(min, max, step) {
+    if (!(step > 0)) return null;
+    var ticks = [];
+    for (var v = min; v <= max + step * 0.5; v += step) {
+      ticks.push(Math.round(v * 1e6) / 1e6);
+    }
+    return ticks;
+  }
 
   function convertFromNm(nm, unit) {
     if (unit === "eV") return HC_EV_NM / nm;
@@ -256,11 +292,17 @@
     var fontFamily = getComputedStyle(document.body).fontFamily;
 
     var xVals = state.xNm.map(function (nm) { return convertFromNm(nm, bottomUnit); });
-    var xMin = Math.min.apply(null, xVals);
-    var xMax = Math.max.apply(null, xVals);
-    if (xMin === xMax) { xMin -= 1; xMax += 1; }
-    var yMax = Math.max.apply(null, state.y) * 1.12 || 1;
-    var yMin = 0;
+    var autoXMin = Math.min.apply(null, xVals);
+    var autoXMax = Math.max.apply(null, xVals);
+    if (autoXMin === autoXMax) { autoXMin -= 1; autoXMax += 1; }
+    var autoYMax = Math.max.apply(null, state.y) * 1.12 || 1;
+
+    var xMin = custom.xMin != null ? custom.xMin : autoXMin;
+    var xMax = custom.xMax != null ? custom.xMax : autoXMax;
+    if (xMin === xMax) xMax = xMin + 1;
+    var yMin = custom.yMin != null ? custom.yMin : 0;
+    var yMax = custom.yMax != null ? custom.yMax : autoYMax;
+    if (yMax <= yMin) yMax = yMin + 1;
 
     var left = padLeft, right = width - padRight, top = padTop, bottom = height - padBottom;
     var plotW = right - left, plotH = bottom - top;
@@ -276,7 +318,7 @@
 
     ctx.font = "11px " + fontFamily;
 
-    var yTicks = niceTicks(yMin, yMax, 5);
+    var yTicks = stepTicks(yMin, yMax, custom.yStep) || niceTicks(yMin, yMax, 5);
     ctx.textAlign = "right";
     ctx.textBaseline = "middle";
     yTicks.forEach(function (t) {
@@ -293,7 +335,7 @@
       ctx.fillText(t.toFixed(2), left - 8, py);
     });
 
-    var xTicks = niceTicks(xMin, xMax, 6);
+    var xTicks = stepTicks(xMin, xMax, custom.xStep) || niceTicks(xMin, xMax, 6);
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
     xTicks.forEach(function (t) {
@@ -348,7 +390,7 @@
     ctx.textAlign = "center";
     ctx.textBaseline = "alphabetic";
     ctx.fillText(unitLabel(bottomUnit), (left + right) / 2, height - 8);
-    ctx.fillText(unitLabel(topUnit), (left + right) / 2, 14);
+    ctx.fillText(unitLabel(topUnit), (left + right) / 2, 32);
 
     ctx.save();
     ctx.translate(14, (top + bottom) / 2);
@@ -356,6 +398,19 @@
     ctx.textAlign = "center";
     ctx.fillText("Absorbance (a.u.)", 0, 0);
     ctx.restore();
+
+    if (custom.title && custom.title.trim()) {
+      ctx.fillStyle = strongText;
+      ctx.font = "bold 13px " + fontFamily;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "alphabetic";
+      ctx.fillText(custom.title.trim(), width / 2, 16);
+    }
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(left, top, plotW, plotH);
+    ctx.clip();
 
     ctx.beginPath();
     state.xNm.forEach(function (nm, i) {
@@ -374,6 +429,30 @@
     ctx.globalAlpha = 0.08;
     ctx.fill();
     ctx.globalAlpha = 1;
+    ctx.restore();
+
+    var legendText = (custom.legend && custom.legend.trim()) || state.label;
+    if (legendText) {
+      ctx.font = "11px " + fontFamily;
+      var swatchW = 14, boxPad = 6;
+      var textW = ctx.measureText(legendText).width;
+      var boxW = swatchW + boxPad * 2 + textW + 6;
+      var bx = right - boxW - 6, by = top + 6;
+      ctx.fillStyle = rootStyles.getPropertyValue("--bg-elev").trim() || "#11151f";
+      ctx.globalAlpha = 0.85;
+      ctx.fillRect(bx, by, boxW, 20);
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = lineColor;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(bx + boxPad, by + 10);
+      ctx.lineTo(bx + boxPad + swatchW, by + 10);
+      ctx.stroke();
+      ctx.fillStyle = strongText;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText(legendText, bx + boxPad + swatchW + 6, by + 10);
+    }
   }
 
   function nearestIndex(nmTarget) {
@@ -454,7 +533,26 @@
     draw();
   });
 
-  axisUnitSelect.addEventListener("change", draw);
+  axisUnitSelect.addEventListener("change", function () {
+    xMinInput.value = ""; xMaxInput.value = ""; xStepInput.value = "";
+    readCustom();
+    draw();
+  });
+
+  [titleInput, legendInput, xMinInput, xMaxInput, xStepInput, yMinInput, yMaxInput, yStepInput].forEach(function (el) {
+    el.addEventListener("input", function () {
+      readCustom();
+      draw();
+    });
+  });
+
+  resetAxesBtn.addEventListener("click", function () {
+    [titleInput, legendInput, xMinInput, xMaxInput, xStepInput, yMinInput, yMaxInput, yStepInput].forEach(function (el) {
+      el.value = "";
+    });
+    readCustom();
+    draw();
+  });
 
   pngBtn.addEventListener("click", function () {
     canvas.toBlob(function (blob) {

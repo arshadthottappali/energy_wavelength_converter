@@ -184,6 +184,47 @@
         </label>
       </div>
 
+      <details class="chart-settings">
+        <summary>Customize chart (title, legend, axes)</summary>
+        <div class="field-grid chart-settings-grid">
+          <label class="field">
+            <span>Chart title</span>
+            <input type="text" id="spectra-title" placeholder="e.g. Fluorescein absorption spectrum">
+          </label>
+          <label class="field">
+            <span>Legend label</span>
+            <input type="text" id="spectra-legend" placeholder="defaults to loaded data name">
+          </label>
+          <label class="field">
+            <span>X min</span>
+            <input type="number" id="spectra-xmin" placeholder="auto" step="any">
+          </label>
+          <label class="field">
+            <span>X max</span>
+            <input type="number" id="spectra-xmax" placeholder="auto" step="any">
+          </label>
+          <label class="field">
+            <span>X major tick step</span>
+            <input type="number" id="spectra-xstep" placeholder="auto" step="any">
+          </label>
+          <label class="field">
+            <span>Y min</span>
+            <input type="number" id="spectra-ymin" placeholder="auto" step="any">
+          </label>
+          <label class="field">
+            <span>Y max</span>
+            <input type="number" id="spectra-ymax" placeholder="auto" step="any">
+          </label>
+          <label class="field">
+            <span>Y major tick step</span>
+            <input type="number" id="spectra-ystep" placeholder="auto" step="any">
+          </label>
+        </div>
+        <div class="actions">
+          <button type="button" id="spectra-reset-axes-btn" class="btn btn-secondary">Reset to auto</button>
+        </div>
+      </details>
+
       <div class="spectra-chart-wrap">
         <canvas id="spectra-canvas"></canvas>
         <div id="spectra-tooltip" class="spectra-tooltip"></div>

@@ -331,6 +331,29 @@ td:first-child {
   border-color: var(--accent);
 }
 
+.chart-settings {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+  background: var(--bg);
+}
+
+.chart-settings summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.86rem;
+  color: var(--text);
+}
+
+.chart-settings summary:hover {
+  color: var(--accent);
+}
+
+.chart-settings-grid {
+  margin-top: 0.9rem;
+}
+
 .spectra-chart-wrap {
   position: relative;
   border: 1px solid var(--border);
