@@ -1,6 +1,6 @@
 # SpectraWave
 
-> A free, client-side toolkit for spectroscopy and photonics researchers: converts wavelength (nm), photon energy (eV, J), wavenumber (cm⁻¹), and frequency (THz), and plots multiple absorption spectra with waterfall offsets, a colorblind-safe palette, and publication-ready SVG/PNG export. Everything runs in the browser; no data is transmitted, no account required.
+> A free, client-side toolkit for spectroscopy and photonics researchers: converts wavelength (nm), photon energy (eV, J), wavenumber (cm⁻¹), and frequency (THz), and plots multiple absorption or steady-state fluorescence spectra with waterfall offsets, a colorblind-safe palette, and publication-ready SVG/PNG export. Everything runs in the browser; no data is transmitted, no account required.
 
 ## Key formulas
 
@@ -28,18 +28,20 @@
 | Er:YAG | 2940 | 0.422 | 3401.4 | 102.0 |
 | CO2 | 10600 | 0.117 | 943.4 | 28.3 |
 
-## Absorption spectrum viewer
+## Spectrum viewer
 
 A client-side, multi-trace spectrum plotter with paired wavelength/energy axes (selectable nm, eV, or cm⁻¹):
 
+- "Spectrum type" toggle switches between absorption and steady-state fluorescence — the Y axis relabels to Fluorescence Intensity (a.u.) and the illustrative example switches to a Stokes-shifted emission curve; every other feature works identically in both modes.
 - Load multiple spectra and overlay them, or give each an independent Y offset to stack them waterfall-style.
-- Load data via the built-in illustrative example (fluorescein), CSV upload, or pasting two columns copied straight from a spreadsheet.
+- Load data via the built-in illustrative example, CSV upload, or pasting columns copied straight from a spreadsheet — a wide-format file (wavelength plus several sample columns) automatically splits into one spectrum per column.
 - New spectra are auto-assigned colors from the colorblind-safe Okabe-Ito palette, overridable per trace with a color picker.
-- Customizable chart title, per-trace legend labels, X/Y axis min/max/tick step, background color (transparent/white/theme/custom), and an optional closed axis box (top/right border + mirrored ticks) matching the GraphPad Prism convention.
-- Export the chart as a vector SVG (for Illustrator/Inkscape) or PNG, and export each spectrum's underlying data as CSV converted to nm, eV, or cm⁻¹.
+- Customizable chart title, per-trace legend labels, X/Y axis min/max/tick step, independent X/Y gridline toggles, background color (transparent/white/theme/custom), and a closed axis box (top/right border + mirrored ticks, on by default) matching the GraphPad Prism convention.
+- The chart canvas stays pinned (sticky) while scrolling through the data rows and settings below it, so edits show live without losing sight of the plot.
+- Export the chart as a vector SVG (for Illustrator/Inkscape) or PNG, export each spectrum's raw underlying data as CSV converted to nm/eV/cm⁻¹, or export a single combined CSV of exactly what's currently visible on screen (respecting hidden traces, Y offsets, and any custom X-axis crop). "Clear all" removes every loaded spectrum at once.
 
 No account or upload to a server is required for any of this.
 
 ## Pages
 
-- [Converter, spectrum viewer, and reference tables](https://spectrawave.vercel.app/): interactive calculator, multi-spectrum absorption plotter, full laser reference table, and an educational guide explaining the wavelength-to-energy relationship, why energy scales nonlinearly with wavelength, and how to build a publication-ready spectrum figure.
+- [Converter, spectrum viewer, and reference tables](https://spectrawave.vercel.app/): interactive calculator, multi-spectrum absorption/fluorescence plotter, full laser reference table, and an educational guide explaining the wavelength-to-energy relationship, why energy scales nonlinearly with wavelength, and how to build a publication-ready spectrum figure.

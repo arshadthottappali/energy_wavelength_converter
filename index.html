@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SpectraWave — Wavelength, Energy &amp; Absorption Spectrum Tools</title>
-<meta name="description" content="Free browser-based wavelength-to-energy converter and absorption spectrum plotter for researchers: multi-spectra overlay, waterfall offsets, colorblind-safe colors, closed-box axes, and SVG/PNG export. No login, nothing uploaded.">
-<meta name="keywords" content="wavelength to energy converter, absorption spectrum plotter, nm to eV, spectroscopy graphing tool, waterfall plot spectra, colorblind safe scientific plot colors, SVG chart export, GraphPad Prism alternative free, closed box axis plot, free online spectrum tool for researchers">
+<title>SpectraWave — Wavelength, Energy &amp; Spectrum Tools</title>
+<meta name="description" content="Free browser-based wavelength-to-energy converter and absorption/fluorescence spectrum plotter for researchers: multi-spectra overlay, waterfall offsets, colorblind-safe colors, closed-box axes, and PNG/SVG/CSV export of exactly what's on screen. No login, nothing uploaded.">
+<meta name="keywords" content="wavelength to energy converter, absorption spectrum plotter, fluorescence spectrum plotter, steady state fluorescence, excitation emission spectra, nm to eV, spectroscopy graphing tool, waterfall plot spectra, colorblind safe scientific plot colors, SVG chart export, GraphPad Prism alternative free, closed box axis plot, free online spectrum tool for researchers">
 <meta name="author" content="SpectraWave">
 <link rel="canonical" href="https://spectrawave.vercel.app/">
 <meta name="robots" content="index, follow, max-image-preview:large">
@@ -14,8 +14,8 @@
 
 <!-- Open Graph -->
 <meta property="og:type" content="website">
-<meta property="og:title" content="SpectraWave — Wavelength, Energy & Absorption Spectrum Tools">
-<meta property="og:description" content="Free browser-based wavelength-to-energy converter and absorption spectrum plotter for researchers: multi-spectra overlay, colorblind-safe colors, closed-box axes, and SVG/PNG export.">
+<meta property="og:title" content="SpectraWave — Wavelength, Energy & Spectrum Tools">
+<meta property="og:description" content="Free browser-based wavelength-to-energy converter and absorption/fluorescence spectrum plotter for researchers: multi-spectra overlay, colorblind-safe colors, closed-box axes, and SVG/PNG/CSV export.">
 <meta property="og:url" content="https://spectrawave.vercel.app/">
 <meta property="og:site_name" content="SpectraWave">
 <meta property="og:locale" content="en_US">
@@ -44,7 +44,7 @@
   "url": "https://spectrawave.vercel.app/",
   "applicationCategory": "UtilitiesApplication",
   "operatingSystem": "Any (runs in browser)",
-  "description": "A free, client-side toolkit for spectroscopy and photonics researchers: converts wavelength, photon energy, wavenumber, and frequency, and plots multiple absorption spectra with waterfall offsets, a colorblind-safe palette, and publication-ready SVG/PNG export.",
+  "description": "A free, client-side toolkit for spectroscopy and photonics researchers: converts wavelength, photon energy, wavenumber, and frequency, and plots multiple absorption or steady-state fluorescence spectra with waterfall offsets, a colorblind-safe palette, and publication-ready SVG/PNG export.",
   "audience": {
     "@type": "Audience",
     "audienceType": "Researchers, graduate students, principal investigators, spectroscopists, photonics and laser engineers"
@@ -58,7 +58,8 @@
     "Reverse conversion from energy or wavenumber back to wavelength",
     "Reference table of common laser wavelengths",
     "CSV export of conversion results",
-    "Absorption spectrum viewer supporting multiple overlaid or waterfall-offset spectra, CSV upload or paste, a colorblind-safe palette, customizable title/axes/background/closed-box frame, and PNG/SVG/CSV export"
+    "Spectrum viewer supporting both absorption and steady-state fluorescence spectra, multiple overlaid or waterfall-offset traces, CSV upload or paste (including multi-sample wide-format files), a colorblind-safe palette, customizable title/axes/gridlines/background/closed-box frame, and PNG/SVG/CSV export including a combined CSV of exactly what's shown on screen",
+    "One-click removal of all loaded spectra"
   ]
 }
 </script>
@@ -156,6 +157,22 @@
         "@type": "Answer",
         "text": "Yes. Upload or paste a file with wavelength (or energy or wavenumber) in the first column and one absorbance column per sample after it. Each extra column is automatically split into its own spectrum with an auto-assigned colorblind-safe color, using the column header text as its legend label when the file has one."
       }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I plot steady-state fluorescence excitation or emission spectra?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Set \"Spectrum type\" to \"Fluorescence (steady-state)\" and the Y axis relabels to Fluorescence Intensity (a.u.); everything else — multi-spectra overlay, waterfall offsets, colors, axis customization, and PNG/SVG/CSV export — works identically to the absorption mode."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I download the data exactly as shown on the chart?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. \"Download data (CSV)\" exports a single file containing only the currently visible spectra, with any Y offset applied and cropped to the current X-axis range if you've set custom min/max values — matching what's actually drawn rather than the raw uploaded data."
+      }
     }
   ]
 }
@@ -250,8 +267,8 @@
   <div id="ad-slot" class="ad-slot" aria-hidden="true"></div>
 
   <section id="spectra" aria-labelledby="spectra-heading">
-    <h2 id="spectra-heading">Absorption Spectrum Viewer</h2>
-    <p class="section-intro">Plot one or more absorption spectra with wavelength and energy on paired axes, compare them overlaid or offset like a waterfall plot, and export a publication-ready PNG, SVG, or CSV. Everything runs in your browser — nothing is uploaded to a server, no account needed.</p>
+    <h2 id="spectra-heading">Spectrum Viewer</h2>
+    <p class="section-intro">Plot one or more absorption or steady-state fluorescence spectra with wavelength and energy on paired axes, compare them overlaid or offset like a waterfall plot, and export a publication-ready PNG, SVG, or CSV. Everything runs in your browser — nothing is uploaded to a server, no account needed.</p>
 
     <div class="card spectra-card">
       <div class="spectra-chart-wrap">
@@ -264,9 +281,18 @@
       <div class="actions">
         <button type="button" id="spectra-png-btn" class="btn btn-secondary">Download chart (PNG)</button>
         <button type="button" id="spectra-svg-btn" class="btn btn-secondary">Download chart (SVG)</button>
+        <button type="button" id="spectra-data-btn" class="btn btn-secondary">Download data (CSV)</button>
+        <button type="button" id="spectra-clear-btn" class="btn btn-secondary spectra-remove-btn">Clear all</button>
       </div>
 
       <div class="spectra-global-controls">
+        <label class="field">
+          <span>Spectrum type</span>
+          <select id="spectra-mode">
+            <option value="absorption">Absorption</option>
+            <option value="fluorescence">Fluorescence (steady-state)</option>
+          </select>
+        </label>
         <label class="field">
           <span>X-axis unit</span>
           <select id="spectra-axis-unit">
@@ -480,6 +506,10 @@
       <p>ν̃(cm⁻¹) = 1e7 / λ(nm). A 1064 nm Nd:YAG laser is about 9398.5 cm⁻¹.</p>
     </div>
     <div class="faq-item">
+      <h3>Why does energy increase as wavelength decreases?</h3>
+      <p>Photon energy is inversely proportional to wavelength (E = hc/λ), so shorter wavelengths pack more oscillation cycles per unit length — higher frequency, higher energy.</p>
+    </div>
+    <div class="faq-item">
       <h3>What is the photon energy of a 1064 nm Nd:YAG laser?</h3>
       <p>Approximately 1.165 eV, 9398.5 cm⁻¹, and 281.76 THz.</p>
     </div>
@@ -510,6 +540,14 @@
     <div class="faq-item">
       <h3>Can I upload one CSV with multiple sample spectra at once?</h3>
       <p>Yes — a file with wavelength in column 1 and several sample columns after it automatically splits into one spectrum per column, using the column headers as legend labels if present.</p>
+    </div>
+    <div class="faq-item">
+      <h3>Can I plot steady-state fluorescence excitation or emission spectra?</h3>
+      <p>Yes — set "Spectrum type" to "Fluorescence (steady-state)" and the Y axis relabels to Fluorescence Intensity (a.u.); overlay, offsets, colors, and export all work the same as absorption mode.</p>
+    </div>
+    <div class="faq-item">
+      <h3>Can I download the data exactly as shown on the chart?</h3>
+      <p>Yes — "Download data (CSV)" exports only the currently visible spectra, with offsets applied and cropped to any custom X-axis range you've set.</p>
     </div>
   </section>
 

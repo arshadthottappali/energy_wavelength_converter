@@ -36,7 +36,7 @@ html, body {
 }
 
 .wrap {
-  max-width: 960px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 0 1.5rem;
 }
@@ -92,6 +92,7 @@ h3 {
   color: var(--text-dim);
   margin-top: 0;
   font-size: 0.95rem;
+  max-width: 72ch;
 }
 
 .card {
@@ -317,7 +318,13 @@ td:first-child {
 /* Spectrum viewer */
 
 .spectra-global-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
   margin-bottom: 1.25rem;
+}
+
+.spectra-global-controls .field {
   max-width: 260px;
 }
 

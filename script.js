@@ -142,6 +142,7 @@
   var tooltip = document.getElementById("spectra-tooltip");
   var statusEl = document.getElementById("spectra-status");
   var axisUnitSelect = document.getElementById("spectra-axis-unit");
+  var modeSelect = document.getElementById("spectra-mode");
 
   var datasetsContainer = document.getElementById("spectra-datasets");
   var addDatasetBtn = document.getElementById("spectra-add-dataset-btn");
@@ -149,6 +150,8 @@
 
   var pngBtn = document.getElementById("spectra-png-btn");
   var svgBtn = document.getElementById("spectra-svg-btn");
+  var dataBtn = document.getElementById("spectra-data-btn");
+  var clearBtn = document.getElementById("spectra-clear-btn");
 
   var titleInput = document.getElementById("spectra-title");
   var bgModeSelect = document.getElementById("spectra-bg-mode");
@@ -167,6 +170,7 @@
 
   var datasets = [];
   var datasetIdCounter = 0;
+  var spectrumMode = "absorption";
   var custom = {
     title: "", xMin: null, xMax: null, xStep: null, yMin: null, yMax: null, yStep: null,
     bgMode: "transparent", bgCustomColor: "#ffffff", closedBox: true, showXGrid: true, showYGrid: true
@@ -248,6 +252,14 @@
     return unit === "eV" ? "nm" : "eV";
   }
 
+  function yAxisTitle() {
+    return spectrumMode === "fluorescence" ? "Fluorescence Intensity (a.u.)" : "Absorbance (a.u.)";
+  }
+
+  function yValueLabel() {
+    return spectrumMode === "fluorescence" ? "Intensity" : "Absorbance";
+  }
+
   function niceNum(range, round) {
     var exponent = Math.floor(Math.log10(range));
     var fraction = range / Math.pow(10, exponent);
@@ -290,6 +302,23 @@
     var max = Math.max.apply(null, yRaw);
     var y = yRaw.map(function (v) { return Math.round((v / max) * 1000) / 1000; });
     return { xNm: xNm, y: y, label: "fluorescein-example (illustrative)" };
+  }
+
+  function generateExampleEmissionSpectrum() {
+    var xNm = [], yRaw = [];
+    for (var nm = 480; nm <= 650; nm += 2) {
+      var main = Math.exp(-Math.pow(nm - 513, 2) / (2 * Math.pow(15, 2)));
+      var tail = 0.28 * Math.exp(-Math.pow(nm - 555, 2) / (2 * Math.pow(28, 2)));
+      xNm.push(nm);
+      yRaw.push(main + tail);
+    }
+    var max = Math.max.apply(null, yRaw);
+    var y = yRaw.map(function (v) { return Math.round((v / max) * 1000) / 1000; });
+    return { xNm: xNm, y: y, label: "fluorescein-emission-example (illustrative)" };
+  }
+
+  function generateExample() {
+    return spectrumMode === "fluorescence" ? generateExampleEmissionSpectrum() : generateExampleSpectrum();
   }
 
   function setStatus(msg, isError) {
@@ -513,7 +542,7 @@
     ctx.translate(14, (L.top + L.bottom) / 2);
     ctx.rotate(-Math.PI / 2);
     ctx.textAlign = "center";
-    ctx.fillText("Absorbance (a.u.)", 0, 0);
+    ctx.fillText(yAxisTitle(), 0, 0);
     ctx.restore();
 
     if (custom.title && custom.title.trim()) {
@@ -619,7 +648,7 @@
 
     parts.push('<text x="' + ((L.left + L.right) / 2) + '" y="' + (height - 8) + '" text-anchor="middle" fill="' + theme.strongText + '" font-size="12">' + escapeHtml(unitLabel(L.bottomUnit)) + '</text>');
     parts.push('<text x="' + ((L.left + L.right) / 2) + '" y="32" text-anchor="middle" fill="' + theme.strongText + '" font-size="12">' + escapeHtml(unitLabel(L.topUnit)) + '</text>');
-    parts.push('<text x="14" y="' + ((L.top + L.bottom) / 2) + '" text-anchor="middle" fill="' + theme.strongText + '" font-size="12" transform="rotate(-90 14 ' + ((L.top + L.bottom) / 2) + ')">Absorbance (a.u.)</text>');
+    parts.push('<text x="14" y="' + ((L.top + L.bottom) / 2) + '" text-anchor="middle" fill="' + theme.strongText + '" font-size="12" transform="rotate(-90 14 ' + ((L.top + L.bottom) / 2) + ')">' + escapeHtml(yAxisTitle()) + '</text>');
 
     if (customSettings.title && customSettings.title.trim()) {
       parts.push('<text x="' + (width / 2) + '" y="16" text-anchor="middle" fill="' + theme.strongText + '" font-size="13" font-weight="bold">' + escapeHtml(customSettings.title.trim()) + '</text>');
@@ -834,7 +863,7 @@
 
     exampleBtn.addEventListener("click", function () {
       fileInput.value = "";
-      var ex = generateExampleSpectrum();
+      var ex = generateExample();
       ds.xNm = ex.xNm; ds.y = ex.y; ds.source = "example";
       applyLoadResult({
         ok: true,
@@ -884,7 +913,7 @@
     downloadBtn.addEventListener("click", function () {
       if (!ds.xNm.length) return;
       var unit = axisUnitSelect.value;
-      var rows = [[unitLabel(unit), "Absorbance"]];
+      var rows = [[unitLabel(unit), yValueLabel()]];
       ds.xNm.forEach(function (nm, i) {
         rows.push([convertFromNm(nm, unit).toFixed(unit === "nm" ? 2 : 4), ds.y[i]]);
       });
@@ -941,6 +970,11 @@
     draw();
   });
 
+  modeSelect.addEventListener("change", function () {
+    spectrumMode = modeSelect.value;
+    draw();
+  });
+
   resetAxesBtn.addEventListener("click", function () {
     [titleInput, xMinInput, xMaxInput, xStepInput, yMinInput, yMaxInput, yStepInput].forEach(function (el) {
       el.value = "";
@@ -960,6 +994,41 @@
     var theme = readThemeColors();
     var svgStr = buildSvgString(width, height, datasets, axisUnitSelect.value, custom, theme);
     downloadBlob("absorption-spectrum.svg", new Blob([svgStr], { type: "image/svg+xml;charset=utf-8;" }));
+  });
+
+  function escapeCsvCell(cell) {
+    var s = String(cell);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+
+  dataBtn.addEventListener("click", function () {
+    var unit = axisUnitSelect.value;
+    var rows = [["Spectrum", unitLabel(unit), yValueLabel()]];
+    var xMin = custom.xMin, xMax = custom.xMax;
+    var any = false;
+    datasets.forEach(function (d) {
+      if (!d.visible || !d.xNm.length) return;
+      var label = (d.label && d.label.trim()) || "Spectrum";
+      d.xNm.forEach(function (nm, i) {
+        var xv = convertFromNm(nm, unit);
+        if (xMin != null && xv < xMin - 1e-9) return;
+        if (xMax != null && xv > xMax + 1e-9) return;
+        rows.push([label, xv.toFixed(unit === "nm" ? 2 : 4), d.y[i] + d.offset]);
+        any = true;
+      });
+    });
+    if (!any) return;
+    var csv = rows.map(function (r) { return r.map(escapeCsvCell).join(","); }).join("\r\n");
+    downloadBlob("spectra-visible-" + unit.replace("-", "") + ".csv", new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+  });
+
+  clearBtn.addEventListener("click", function () {
+    if (!datasets.length) return;
+    if (!window.confirm("Remove all spectra?")) return;
+    datasets.length = 0;
+    datasetsContainer.innerHTML = "";
+    setStatus("No spectra loaded.", false);
+    draw();
   });
 
   window.addEventListener("resize", draw);
