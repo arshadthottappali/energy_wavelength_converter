@@ -254,6 +254,18 @@
     <p class="section-intro">Plot one or more absorption spectra with wavelength and energy on paired axes, compare them overlaid or offset like a waterfall plot, and export a publication-ready PNG, SVG, or CSV. Everything runs in your browser — nothing is uploaded to a server, no account needed.</p>
 
     <div class="card spectra-card">
+      <div class="spectra-chart-wrap">
+        <canvas id="spectra-canvas"></canvas>
+        <div id="spectra-tooltip" class="spectra-tooltip"></div>
+      </div>
+
+      <p id="spectra-status" class="hint spectra-status" role="status"></p>
+
+      <div class="actions">
+        <button type="button" id="spectra-png-btn" class="btn btn-secondary">Download chart (PNG)</button>
+        <button type="button" id="spectra-svg-btn" class="btn btn-secondary">Download chart (SVG)</button>
+      </div>
+
       <div class="spectra-global-controls">
         <label class="field">
           <span>X-axis unit</span>
@@ -267,72 +279,87 @@
 
       <div id="spectra-datasets" class="spectra-datasets"></div>
       <button type="button" id="spectra-add-dataset-btn" class="btn btn-secondary spectra-add-btn">+ Add spectrum</button>
+      <p class="hint">Each row loads one CSV or pasted block — but a file with wavelength in column 1 and several sample columns after it (e.g. multiple absorbance readings) automatically expands into one spectrum per column, each in its own row. Column headers, if present, become the legend labels. Every row also has its own CSV download (converted to the selected unit, offset excluded). The example spectrum is an illustrative curve for demonstration, not measured data.</p>
 
       <details class="chart-settings">
         <summary>Customize chart (title, axes, background, frame)</summary>
-        <div class="field-grid chart-settings-grid">
-          <label class="field">
-            <span>Chart title</span>
-            <input type="text" id="spectra-title" placeholder="e.g. Fluorescein absorption spectrum">
-          </label>
-          <label class="field">
-            <span>Background</span>
-            <select id="spectra-bg-mode">
-              <option value="transparent">Transparent</option>
-              <option value="white">White</option>
-              <option value="theme">Match page theme</option>
-              <option value="custom">Custom color…</option>
-            </select>
-          </label>
-          <label class="field" id="spectra-bg-custom-wrap" hidden>
-            <span>Custom background</span>
-            <input type="color" id="spectra-bg-custom" value="#ffffff">
-          </label>
-          <label class="field">
-            <span>X min</span>
-            <input type="number" id="spectra-xmin" placeholder="auto" step="any">
-          </label>
-          <label class="field">
-            <span>X max</span>
-            <input type="number" id="spectra-xmax" placeholder="auto" step="any">
-          </label>
-          <label class="field">
-            <span>X major tick step</span>
-            <input type="number" id="spectra-xstep" placeholder="auto" step="any">
-          </label>
-          <label class="field">
-            <span>Y min</span>
-            <input type="number" id="spectra-ymin" placeholder="auto" step="any">
-          </label>
-          <label class="field">
-            <span>Y max</span>
-            <input type="number" id="spectra-ymax" placeholder="auto" step="any">
-          </label>
-          <label class="field">
-            <span>Y major tick step</span>
-            <input type="number" id="spectra-ystep" placeholder="auto" step="any">
+
+        <div class="chart-settings-group">
+          <p class="chart-settings-group-label">Chart</p>
+          <div class="field-grid chart-settings-grid">
+            <label class="field">
+              <span>Chart title</span>
+              <input type="text" id="spectra-title" placeholder="e.g. Fluorescein absorption spectrum">
+            </label>
+            <label class="field">
+              <span>Background</span>
+              <select id="spectra-bg-mode">
+                <option value="transparent">Transparent</option>
+                <option value="white">White</option>
+                <option value="theme">Match page theme</option>
+                <option value="custom">Custom color…</option>
+              </select>
+            </label>
+            <label class="field" id="spectra-bg-custom-wrap" hidden>
+              <span>Custom background</span>
+              <input type="color" id="spectra-bg-custom" value="#ffffff">
+            </label>
+          </div>
+        </div>
+
+        <div class="chart-settings-group">
+          <p class="chart-settings-group-label">X axis</p>
+          <div class="field-grid chart-settings-grid">
+            <label class="field">
+              <span>X min</span>
+              <input type="number" id="spectra-xmin" placeholder="auto" step="any">
+            </label>
+            <label class="field">
+              <span>X max</span>
+              <input type="number" id="spectra-xmax" placeholder="auto" step="any">
+            </label>
+            <label class="field">
+              <span>X major tick step</span>
+              <input type="number" id="spectra-xstep" placeholder="auto" step="any">
+            </label>
+          </div>
+          <label class="spectra-checkbox-field">
+            <input type="checkbox" id="spectra-xgrid" checked> Show gridlines
           </label>
         </div>
-        <label class="spectra-checkbox-field">
-          <input type="checkbox" id="spectra-closed-box"> Closed axis box (top &amp; right border + right tick marks)
-        </label>
+
+        <div class="chart-settings-group">
+          <p class="chart-settings-group-label">Y axis</p>
+          <div class="field-grid chart-settings-grid">
+            <label class="field">
+              <span>Y min</span>
+              <input type="number" id="spectra-ymin" placeholder="auto" step="any">
+            </label>
+            <label class="field">
+              <span>Y max</span>
+              <input type="number" id="spectra-ymax" placeholder="auto" step="any">
+            </label>
+            <label class="field">
+              <span>Y major tick step</span>
+              <input type="number" id="spectra-ystep" placeholder="auto" step="any">
+            </label>
+          </div>
+          <label class="spectra-checkbox-field">
+            <input type="checkbox" id="spectra-ygrid" checked> Show gridlines
+          </label>
+        </div>
+
+        <div class="chart-settings-group">
+          <p class="chart-settings-group-label">Frame</p>
+          <label class="spectra-checkbox-field">
+            <input type="checkbox" id="spectra-closed-box" checked> Closed axis box (top &amp; right border + right tick marks)
+          </label>
+        </div>
+
         <div class="actions">
           <button type="button" id="spectra-reset-axes-btn" class="btn btn-secondary">Reset to auto</button>
         </div>
       </details>
-
-      <div class="spectra-chart-wrap">
-        <canvas id="spectra-canvas"></canvas>
-        <div id="spectra-tooltip" class="spectra-tooltip"></div>
-      </div>
-
-      <p id="spectra-status" class="hint spectra-status" role="status"></p>
-
-      <div class="actions">
-        <button type="button" id="spectra-png-btn" class="btn btn-secondary">Download chart (PNG)</button>
-        <button type="button" id="spectra-svg-btn" class="btn btn-secondary">Download chart (SVG)</button>
-      </div>
-      <p class="hint">Each row loads one CSV or pasted block — but a file with wavelength in column 1 and several sample columns after it (e.g. multiple absorbance readings) automatically expands into one spectrum per column, each in its own row. Column headers, if present, become the legend labels. Every row also has its own CSV download (converted to the selected unit, offset excluded). The example spectrum is an illustrative curve for demonstration, not measured data.</p>
     </div>
 
     <template id="spectra-dataset-row-template">

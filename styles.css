@@ -404,8 +404,29 @@ td:first-child {
   white-space: nowrap;
 }
 
-.chart-settings > .spectra-checkbox-field {
+.chart-settings-group {
+  margin-top: 1.1rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--border);
+}
+
+.chart-settings-group:first-of-type {
   margin-top: 0.9rem;
+  padding-top: 0;
+  border-top: none;
+}
+
+.chart-settings-group-label {
+  margin: 0 0 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.chart-settings-group .spectra-checkbox-field {
+  margin-top: 0.75rem;
 }
 
 .spectra-row-actions {
@@ -501,10 +522,21 @@ td:first-child {
 }
 
 .spectra-chart-wrap {
-  position: relative;
+  position: sticky;
+  top: 16px;
+  z-index: 3;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--bg);
+  background: var(--bg-elev);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+  margin-bottom: 1.25rem;
+}
+
+@media (max-width: 640px) {
+  .spectra-chart-wrap {
+    position: static;
+    box-shadow: none;
+  }
 }
 
 #spectra-canvas {

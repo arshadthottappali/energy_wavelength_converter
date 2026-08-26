@@ -155,6 +155,8 @@
   var bgCustomWrap = document.getElementById("spectra-bg-custom-wrap");
   var bgCustomInput = document.getElementById("spectra-bg-custom");
   var closedBoxInput = document.getElementById("spectra-closed-box");
+  var xGridInput = document.getElementById("spectra-xgrid");
+  var yGridInput = document.getElementById("spectra-ygrid");
   var xMinInput = document.getElementById("spectra-xmin");
   var xMaxInput = document.getElementById("spectra-xmax");
   var xStepInput = document.getElementById("spectra-xstep");
@@ -167,7 +169,7 @@
   var datasetIdCounter = 0;
   var custom = {
     title: "", xMin: null, xMax: null, xStep: null, yMin: null, yMax: null, yStep: null,
-    bgMode: "transparent", bgCustomColor: "#ffffff", closedBox: false
+    bgMode: "transparent", bgCustomColor: "#ffffff", closedBox: true, showXGrid: true, showYGrid: true
   };
   var plotBox = null;
   var padLeft = 58, padRight = 16, padTop = 56, padBottom = 46;
@@ -182,6 +184,8 @@
     custom.bgMode = bgModeSelect.value;
     custom.bgCustomColor = bgCustomInput.value;
     custom.closedBox = closedBoxInput.checked;
+    custom.showXGrid = xGridInput.checked;
+    custom.showYGrid = yGridInput.checked;
     custom.xMin = numOrNull(xMinInput);
     custom.xMax = numOrNull(xMaxInput);
     custom.xStep = numOrNull(xStepInput);
@@ -435,13 +439,15 @@
     ctx.textAlign = "right";
     ctx.textBaseline = "middle";
     L.yTicks.forEach(function (t) {
-      ctx.beginPath();
-      ctx.moveTo(L.left, t.px);
-      ctx.lineTo(L.right, t.px);
-      ctx.strokeStyle = theme.grid;
-      ctx.globalAlpha = 0.5;
-      ctx.stroke();
-      ctx.globalAlpha = 1;
+      if (custom.showYGrid) {
+        ctx.beginPath();
+        ctx.moveTo(L.left, t.px);
+        ctx.lineTo(L.right, t.px);
+        ctx.strokeStyle = theme.grid;
+        ctx.globalAlpha = 0.5;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
       ctx.fillStyle = theme.text;
       ctx.fillText(t.value.toFixed(2), L.left - 8, t.px);
       if (custom.closedBox) {
@@ -458,13 +464,15 @@
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
     L.xTicks.forEach(function (t) {
-      ctx.beginPath();
-      ctx.moveTo(t.px, L.top);
-      ctx.lineTo(t.px, L.bottom);
-      ctx.strokeStyle = theme.grid;
-      ctx.globalAlpha = 0.15;
-      ctx.stroke();
-      ctx.globalAlpha = 1;
+      if (custom.showXGrid) {
+        ctx.beginPath();
+        ctx.moveTo(t.px, L.top);
+        ctx.lineTo(t.px, L.bottom);
+        ctx.strokeStyle = theme.grid;
+        ctx.globalAlpha = 0.15;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
       ctx.fillStyle = theme.text;
       ctx.fillText(formatVal(t.value, L.bottomUnit), t.px, L.bottom + 8);
     });
@@ -584,7 +592,9 @@
     }
 
     L.yTicks.forEach(function (t) {
-      parts.push('<line x1="' + L.left + '" y1="' + t.px + '" x2="' + L.right + '" y2="' + t.px + '" stroke="' + theme.grid + '" stroke-opacity="0.5"/>');
+      if (customSettings.showYGrid) {
+        parts.push('<line x1="' + L.left + '" y1="' + t.px + '" x2="' + L.right + '" y2="' + t.px + '" stroke="' + theme.grid + '" stroke-opacity="0.5"/>');
+      }
       parts.push('<text x="' + (L.left - 8) + '" y="' + t.px + '" text-anchor="end" dominant-baseline="middle" fill="' + theme.text + '" font-size="11">' + t.value.toFixed(2) + '</text>');
       if (customSettings.closedBox) {
         parts.push('<line x1="' + L.right + '" y1="' + t.px + '" x2="' + (L.right - 5) + '" y2="' + t.px + '" stroke="' + theme.text + '" stroke-opacity="0.6"/>');
@@ -592,7 +602,9 @@
     });
 
     L.xTicks.forEach(function (t) {
-      parts.push('<line x1="' + t.px + '" y1="' + L.top + '" x2="' + t.px + '" y2="' + L.bottom + '" stroke="' + theme.grid + '" stroke-opacity="0.15"/>');
+      if (customSettings.showXGrid) {
+        parts.push('<line x1="' + t.px + '" y1="' + L.top + '" x2="' + t.px + '" y2="' + L.bottom + '" stroke="' + theme.grid + '" stroke-opacity="0.15"/>');
+      }
       parts.push('<text x="' + t.px + '" y="' + (L.bottom + 8) + '" text-anchor="middle" dominant-baseline="hanging" fill="' + theme.text + '" font-size="11">' + escapeHtml(formatVal(t.value, L.bottomUnit)) + '</text>');
     });
 
@@ -916,9 +928,11 @@
     });
   });
 
-  closedBoxInput.addEventListener("change", function () {
-    readCustom();
-    draw();
+  [closedBoxInput, xGridInput, yGridInput].forEach(function (el) {
+    el.addEventListener("change", function () {
+      readCustom();
+      draw();
+    });
   });
 
   axisUnitSelect.addEventListener("change", function () {
