@@ -506,11 +506,19 @@ td:first-child {
 }
 
 .chart-settings {
+  position: sticky;
+  top: 16px;
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 0.75rem 1rem;
   margin-bottom: 1.25rem;
   background: var(--bg);
+}
+
+@media (max-width: 1000px) {
+  .chart-settings {
+    position: static;
+  }
 }
 
 .chart-settings summary {
@@ -535,11 +543,12 @@ td:first-child {
   transform: translateX(-50%);
 }
 
-.spectra-workspace {
+.spectra-top-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 460px;
+  grid-template-columns: minmax(0, 1fr) 340px;
   gap: 1.5rem;
   align-items: start;
+  margin-bottom: 1.25rem;
 }
 
 @media (max-width: 1000px) {
@@ -549,7 +558,7 @@ td:first-child {
     margin-left: 0;
     transform: none;
   }
-  .spectra-workspace {
+  .spectra-top-grid {
     grid-template-columns: 1fr;
   }
 }
