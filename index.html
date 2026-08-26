@@ -284,12 +284,13 @@
         <aside class="spectra-folder-sidebar" aria-label="Molecule projects">
           <div class="spectra-folder-toolbar">
             <p class="chart-settings-group-label">Projects</p>
-            <button type="button" id="spectra-new-folder-btn" class="btn btn-secondary spectra-folder-btn-sm">+ Folder</button>
+            <button type="button" id="spectra-new-folder-btn" class="btn btn-secondary spectra-folder-btn-sm" title="Create a folder to organize spectra by molecule">+ Folder</button>
           </div>
+          <input type="search" id="spectra-folder-search" class="spectra-folder-search" placeholder="Search folders…" hidden>
           <div id="spectra-folder-tree" class="spectra-folder-tree"></div>
           <div class="spectra-folder-io-actions">
-            <button type="button" id="spectra-export-all-btn" class="btn btn-secondary spectra-folder-btn-sm">Export all</button>
-            <label class="file-btn spectra-folder-btn-sm">
+            <button type="button" id="spectra-export-all-btn" class="btn btn-secondary spectra-folder-btn-sm" title="Download every folder as one backup file">Export all</button>
+            <label class="file-btn spectra-folder-btn-sm" title="Restore folders from a backup file">
               Import all
               <input type="file" id="spectra-import-all-input" accept=".json,application/json" hidden>
             </label>
@@ -311,22 +312,35 @@
               Upload CSV
               <input type="file" id="spectra-upload-input" accept=".csv,.tsv,.txt,text/csv" hidden>
             </label>
-            <button type="button" id="spectra-png-btn" class="btn btn-secondary">Download chart (PNG)</button>
-            <button type="button" id="spectra-svg-btn" class="btn btn-secondary">Download chart (SVG)</button>
-            <button type="button" id="spectra-data-btn" class="btn btn-secondary">Download data (CSV)</button>
-            <span id="spectra-share-group" class="spectra-share-group" hidden>
-              <select id="spectra-share-mode" class="spectra-share-select" aria-label="What to share">
-                <option value="image">Chart image (PNG)</option>
-                <option value="data">Data (CSV)</option>
-                <option value="both">Image + data</option>
-              </select>
-              <button type="button" id="spectra-share-btn" class="btn btn-secondary">Share…</button>
-            </span>
-            <button type="button" id="spectra-save-project-btn" class="btn btn-secondary">Save project (.json)</button>
-            <label class="file-btn">
-              Load project
-              <input type="file" id="spectra-load-project-input" accept=".json,application/json" hidden>
-            </label>
+
+            <details class="spectra-actions-menu">
+              <summary class="btn btn-secondary">Export ▾</summary>
+              <div class="spectra-actions-menu-panel">
+                <button type="button" id="spectra-png-btn" class="btn btn-secondary">Download chart (PNG)</button>
+                <button type="button" id="spectra-svg-btn" class="btn btn-secondary">Download chart (SVG)</button>
+                <button type="button" id="spectra-data-btn" class="btn btn-secondary">Download data (CSV)</button>
+                <span id="spectra-share-group" class="spectra-share-group" hidden>
+                  <select id="spectra-share-mode" class="spectra-share-select" aria-label="What to share">
+                    <option value="image">Chart image (PNG)</option>
+                    <option value="data">Data (CSV)</option>
+                    <option value="both">Image + data</option>
+                  </select>
+                  <button type="button" id="spectra-share-btn" class="btn btn-secondary" title="Send to WhatsApp, email, or any app via your device's share menu">Share…</button>
+                </span>
+              </div>
+            </details>
+
+            <details class="spectra-actions-menu">
+              <summary class="btn btn-secondary">Project ▾</summary>
+              <div class="spectra-actions-menu-panel">
+                <button type="button" id="spectra-save-project-btn" class="btn btn-secondary">Save project (.json)</button>
+                <label class="file-btn">
+                  Load project
+                  <input type="file" id="spectra-load-project-input" accept=".json,application/json" hidden>
+                </label>
+              </div>
+            </details>
+
             <button type="button" id="spectra-clear-btn" class="btn btn-secondary spectra-remove-btn">Clear all</button>
           </div>
 
@@ -376,7 +390,7 @@
                 <span>Custom background</span>
                 <input type="color" id="spectra-bg-custom" value="#ffffff">
               </label>
-              <label class="field">
+              <label class="field" title="Where the trace-color key appears on the chart">
                 <span>Legend position</span>
                 <select id="spectra-legend-position">
                   <option value="top-right">Top right</option>
@@ -406,11 +420,11 @@
               </label>
             </div>
             <div class="field-grid chart-settings-grid chart-settings-grid-3col">
-              <label class="field">
+              <label class="field" title="Overrides the computed axis label with your own text; leave blank to use the default">
                 <span>X axis label</span>
                 <input type="text" id="spectra-xaxis-label" placeholder="e.g. Wavelength (nm)">
               </label>
-              <label class="field">
+              <label class="field" title="How visible the vertical gridlines are, 0 (none) to 1 (solid)">
                 <span>Gridline opacity</span>
                 <input type="number" id="spectra-xgrid-opacity" value="0.15" min="0" max="1" step="0.05">
               </label>
@@ -437,11 +451,11 @@
               </label>
             </div>
             <div class="field-grid chart-settings-grid chart-settings-grid-3col">
-              <label class="field">
+              <label class="field" title="Overrides the computed axis label with your own text; leave blank to use the default">
                 <span>Y axis label</span>
                 <input type="text" id="spectra-yaxis-label" placeholder="e.g. Transmittance (%)">
               </label>
-              <label class="field">
+              <label class="field" title="How visible the horizontal gridlines are, 0 (none) to 1 (solid)">
                 <span>Gridline opacity</span>
                 <input type="number" id="spectra-ygrid-opacity" value="0.5" min="0" max="1" step="0.05">
               </label>
@@ -489,6 +503,12 @@
             <span>Y offset</span>
             <input type="number" data-role="offset" value="0" step="any">
           </label>
+          <label class="field" title="Subtract another loaded spectrum (e.g. a blank/solvent) before normalizing">
+            <span>Subtract</span>
+            <select data-role="subtract">
+              <option value="">None</option>
+            </select>
+          </label>
           <label class="field">
             <span>Normalize</span>
             <select data-role="normalize">
@@ -510,7 +530,7 @@
           <label class="spectra-checkbox-field">
             <input type="checkbox" data-role="visible" checked> Visible
           </label>
-          <button type="button" data-role="find-peaks-btn" class="btn btn-secondary">Find peaks</button>
+          <button type="button" data-role="find-peaks-btn" class="btn btn-secondary" title="Detect local maxima and mark chosen ones on the chart">Find peaks</button>
           <button type="button" data-role="download-btn" class="btn btn-secondary">CSV</button>
           <button type="button" data-role="remove-btn" class="btn btn-secondary spectra-remove-btn">Remove</button>
         </div>
@@ -662,6 +682,11 @@
     <p>SpectraWave runs entirely in your browser. No wavelength, energy, or spectrum data is transmitted or stored. &middot; hc = 1239.84198 eV·nm, c = 299792458 m/s</p>
   </div>
 </footer>
+
+<div id="spectra-undo-toast" class="spectra-undo-toast" role="status" hidden>
+  <span id="spectra-undo-message"></span>
+  <button type="button" id="spectra-undo-btn" class="btn btn-secondary">Undo</button>
+</div>
 
 <script src="script.js?v=20260826a"></script>
 </body>

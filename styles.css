@@ -194,6 +194,54 @@ h3 {
   flex-wrap: wrap;
 }
 
+.spectra-actions-menu {
+  position: relative;
+  display: inline-block;
+}
+
+.spectra-actions-menu > summary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  list-style: none;
+}
+
+.spectra-actions-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.spectra-actions-menu-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+  min-width: 230px;
+  max-width: calc(100vw - 32px);
+}
+
+.spectra-actions-menu-panel > .btn,
+.spectra-actions-menu-panel > .file-btn {
+  width: 100%;
+}
+
+.spectra-actions-menu-panel .spectra-share-group {
+  width: 100%;
+}
+
+.spectra-actions-menu-panel .spectra-share-select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .btn {
   font-family: var(--sans);
   font-size: 0.88rem;
@@ -634,6 +682,23 @@ td:first-child {
   padding: 0.35rem 0.6rem;
 }
 
+.spectra-folder-search {
+  width: 100%;
+  margin-bottom: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  font-family: var(--sans);
+  font-size: 0.82rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-elev);
+  color: var(--text);
+  outline: none;
+}
+
+.spectra-folder-search:focus {
+  border-color: var(--accent);
+}
+
 .spectra-folder-tree {
   display: flex;
   flex-direction: column;
@@ -684,10 +749,10 @@ td:first-child {
   border: none;
   color: var(--text-dim);
   cursor: pointer;
-  font-size: 0.82rem;
-  width: 22px;
-  height: 22px;
-  border-radius: 5px;
+  font-size: 0.85rem;
+  width: 27px;
+  height: 27px;
+  border-radius: 6px;
   line-height: 1;
 }
 
@@ -805,4 +870,28 @@ td:first-child {
 
 .status-error {
   color: var(--danger);
+}
+
+.spectra-undo-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32);
+  z-index: 20;
+  font-family: var(--sans);
+  font-size: 0.88rem;
+  color: var(--text);
+}
+
+.spectra-undo-toast .btn {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.82rem;
 }

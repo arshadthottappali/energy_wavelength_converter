@@ -161,6 +161,10 @@
 
   var folderTreeEl = document.getElementById("spectra-folder-tree");
   var newFolderBtn = document.getElementById("spectra-new-folder-btn");
+  var folderSearchInput = document.getElementById("spectra-folder-search");
+  var undoToastEl = document.getElementById("spectra-undo-toast");
+  var undoMessageEl = document.getElementById("spectra-undo-message");
+  var undoBtn = document.getElementById("spectra-undo-btn");
   var folderStatusEl = document.getElementById("spectra-folder-status");
   var exportAllBtn = document.getElementById("spectra-export-all-btn");
   var importAllInput = document.getElementById("spectra-import-all-input");
@@ -323,8 +327,32 @@
     return y.slice();
   }
 
+  function interpolateSeriesAt(srcXNm, srcY, targetXNm) {
+    return targetXNm.map(function (xnm) {
+      if (!srcXNm.length) return 0;
+      if (xnm <= srcXNm[0]) return srcY[0];
+      if (xnm >= srcXNm[srcXNm.length - 1]) return srcY[srcY.length - 1];
+      var lo = 0, hi = srcXNm.length - 1;
+      while (hi - lo > 1) {
+        var mid = (lo + hi) >> 1;
+        if (srcXNm[mid] <= xnm) lo = mid; else hi = mid;
+      }
+      var x0 = srcXNm[lo], x1 = srcXNm[hi], y0 = srcY[lo], y1 = srcY[hi];
+      var t = (xnm - x0) / (x1 - x0 || 1);
+      return y0 + t * (y1 - y0);
+    });
+  }
+
   function displayY(ds) {
-    return normalizeSeries(ds.y, ds.xNm, ds.normalize).map(function (v) { return v + ds.offset; });
+    var y = ds.y;
+    if (ds.subtractDatasetId) {
+      var baseline = datasets.find(function (d) { return d.id === ds.subtractDatasetId; });
+      if (baseline && baseline.xNm.length) {
+        var baselineY = interpolateSeriesAt(baseline.xNm, baseline.y, ds.xNm);
+        y = y.map(function (v, i) { return v - baselineY[i]; });
+      }
+    }
+    return normalizeSeries(y, ds.xNm, ds.normalize).map(function (v) { return v + ds.offset; });
   }
 
   function findPeaks(y, sensitivity) {
@@ -437,6 +465,30 @@
     folderStatusEl.textContent = msg;
     folderStatusEl.classList.toggle("status-error", !!isError);
   }
+
+  var undoTimer = null;
+  var pendingUndo = null;
+
+  function showUndoToast(message, restoreFn) {
+    if (undoTimer) clearTimeout(undoTimer);
+    undoMessageEl.textContent = message;
+    undoToastEl.hidden = false;
+    pendingUndo = restoreFn;
+    undoTimer = setTimeout(function () {
+      undoToastEl.hidden = true;
+      pendingUndo = null;
+    }, 8000);
+  }
+
+  undoBtn.addEventListener("click", function () {
+    if (undoTimer) { clearTimeout(undoTimer); undoTimer = null; }
+    undoToastEl.hidden = true;
+    if (pendingUndo) {
+      var fn = pendingUndo;
+      pendingUndo = null;
+      fn();
+    }
+  });
 
   function openDb() {
     return new Promise(function (resolve, reject) {
@@ -612,8 +664,36 @@
     };
   }
 
+  function refreshAllSubtractSelects() {
+    datasets.forEach(function (ds) {
+      var stillValid = !ds.subtractDatasetId || datasets.some(function (d) { return d.id === ds.subtractDatasetId; });
+      if (!stillValid) ds.subtractDatasetId = null;
+
+      var row = datasetsContainer.querySelector('[data-ds-id="' + ds.id + '"]');
+      if (!row) return;
+      var select = row.querySelector('[data-role="subtract"]');
+      if (!select) return;
+
+      var currentValue = ds.subtractDatasetId || "";
+      select.innerHTML = "";
+      var noneOpt = document.createElement("option");
+      noneOpt.value = "";
+      noneOpt.textContent = "None";
+      select.appendChild(noneOpt);
+      datasets.forEach(function (other) {
+        if (other.id === ds.id) return;
+        var opt = document.createElement("option");
+        opt.value = other.id;
+        opt.textContent = (other.label && other.label.trim()) || "Spectrum";
+        select.appendChild(opt);
+      });
+      select.value = currentValue;
+    });
+  }
+
   function draw() {
     scheduleFolderPersist();
+    refreshAllSubtractSelects();
     var dims = layout();
     renderChart(ctx, dims.width, dims.height, true);
   }
@@ -1015,11 +1095,22 @@
     return { ok: true, msg: msg };
   }
 
-  function loadFileIntoRow(file, ds, row, colUnit) {
+  function guessColumnUnit(rows) {
+    var col1 = rows.map(function (r) { return r[0]; }).filter(function (v) { return isFinite(v); });
+    if (!col1.length) return "nm";
+    var max = Math.max.apply(null, col1);
+    var min = Math.min.apply(null, col1);
+    if (max <= 50) return "eV";
+    if (min >= 2000) return "cm-1";
+    return "nm";
+  }
+
+  function loadFileIntoRow(file, ds, row, colUnitSelect) {
     var reader = new FileReader();
     reader.onload = function () {
       var parsed = parseCsvWide(String(reader.result));
-      var result = loadWideIntoDatasets(ds, row, parsed, colUnit, file.name, "file");
+      if (parsed.rows.length) colUnitSelect.value = guessColumnUnit(parsed.rows);
+      var result = loadWideIntoDatasets(ds, row, parsed, colUnitSelect.value, file.name, "file");
       setRowStatus(row, result.msg, !result.ok);
       if (result.ok) draw();
     };
@@ -1045,13 +1136,17 @@
       visible: true,
       colUnit: "nm",
       source: null,
-      selectedPeakIndices: []
+      selectedPeakIndices: [],
+      subtractDatasetId: null
     };
     datasets.push(ds);
     return ds;
   }
 
   function removeDataset(ds) {
+    datasets.forEach(function (d) {
+      if (d.subtractDatasetId === ds.id) d.subtractDatasetId = null;
+    });
     var idx = datasets.indexOf(ds);
     if (idx !== -1) datasets.splice(idx, 1);
   }
@@ -1074,11 +1169,15 @@
       axisUnit: axisUnitSelect.value,
       custom: custom,
       datasets: datasets.map(function (d) {
+        var subtractIndex = d.subtractDatasetId
+          ? datasets.findIndex(function (x) { return x.id === d.subtractDatasetId; })
+          : -1;
         return {
           label: d.label, color: d.color, colorAuto: d.colorAuto, paletteIndex: d.paletteIndex,
           offset: d.offset, normalize: d.normalize, lineStyle: d.lineStyle, visible: d.visible,
           colUnit: d.colUnit, source: d.source, xNm: d.xNm, y: d.y,
-          selectedPeakIndices: d.selectedPeakIndices || []
+          selectedPeakIndices: d.selectedPeakIndices || [],
+          subtractIndex: subtractIndex
         };
       })
     };
@@ -1117,9 +1216,11 @@
     modeSelect.value = spectrumMode;
     if (project.axisUnit) axisUnitSelect.value = project.axisUnit;
 
+    var addedDatasets = [];
     (project.datasets || []).forEach(function (saved) {
       var added = addDataset();
       var ds = added.ds, row = added.row;
+      addedDatasets.push(ds);
       ds.xNm = saved.xNm || [];
       ds.y = saved.y || [];
       ds.label = saved.label || "";
@@ -1140,6 +1241,12 @@
       row.querySelector('[data-role="normalize"]').value = ds.normalize;
       row.querySelector('[data-role="line-style"]').value = ds.lineStyle;
       row.querySelector('[data-role="visible"]').checked = ds.visible;
+    });
+
+    (project.datasets || []).forEach(function (saved, idx) {
+      if (saved.subtractIndex != null && saved.subtractIndex >= 0 && addedDatasets[saved.subtractIndex]) {
+        addedDatasets[idx].subtractDatasetId = addedDatasets[saved.subtractIndex].id;
+      }
     });
 
     draw();
@@ -1228,7 +1335,9 @@
     var label = toDelete.length > 1
       ? "this folder and its " + (toDelete.length - 1) + " sub-folder(s)"
       : "this folder";
-    if (!window.confirm("Delete " + label + " (\"" + folder.name + "\")? This cannot be undone.")) return;
+    if (!window.confirm("Delete " + label + " (\"" + folder.name + "\")?")) return;
+
+    var deletedSnapshot = folders.filter(function (f) { return toDelete.indexOf(f.id) !== -1; });
 
     folders = folders.filter(function (f) { return toDelete.indexOf(f.id) === -1; });
     toDelete.forEach(function (fid) { dbDeleteFolder(fid); });
@@ -1247,20 +1356,52 @@
       }
     }
     renderFolderTree();
+
+    showUndoToast(
+      "Deleted \"" + folder.name + "\"" + (toDelete.length > 1 ? " and " + (toDelete.length - 1) + " sub-folder(s)" : "") + ".",
+      function () {
+        deletedSnapshot.forEach(function (f) {
+          folders.push(f);
+          dbPutFolder(f);
+        });
+        renderFolderTree();
+      }
+    );
+  }
+
+  function getVisibleFolderIds(filterText) {
+    if (!filterText) return null;
+    var lower = filterText.toLowerCase();
+    var visible = {};
+    folders.forEach(function (f) {
+      if (f.name.toLowerCase().indexOf(lower) === -1) return;
+      var cur = f;
+      while (cur) {
+        visible[cur.id] = true;
+        cur = cur.parentId ? folders.find(function (x) { return x.id === cur.parentId; }) : null;
+      }
+    });
+    return visible;
   }
 
   function renderFolderTree() {
     folderTreeEl.innerHTML = "";
 
     if (!folders.length) {
+      folderSearchInput.hidden = true;
       var empty = document.createElement("p");
       empty.className = "hint spectra-folder-empty-hint";
       empty.textContent = "No projects yet — click \"+ Folder\" to organize spectra by molecule.";
       folderTreeEl.appendChild(empty);
       return;
     }
+    folderSearchInput.hidden = false;
+
+    var visibleIds = getVisibleFolderIds(folderSearchInput.value.trim());
 
     function renderNode(folder, depth) {
+      if (visibleIds && !visibleIds[folder.id]) return;
+
       var row = document.createElement("div");
       row.className = "spectra-folder-row" + (folder.id === activeFolderId ? " active" : "");
       row.style.paddingLeft = (depth * 14) + "px";
@@ -1310,6 +1451,13 @@
     folders.filter(function (f) { return !f.parentId; })
       .sort(function (a, b) { return a.name.localeCompare(b.name); })
       .forEach(function (f) { renderNode(f, 0); });
+
+    if (visibleIds && !Object.keys(visibleIds).length) {
+      var noMatch = document.createElement("p");
+      noMatch.className = "hint spectra-folder-empty-hint";
+      noMatch.textContent = "No folders match \"" + folderSearchInput.value.trim() + "\".";
+      folderTreeEl.appendChild(noMatch);
+    }
   }
 
   function createDatasetRow(ds) {
@@ -1326,6 +1474,7 @@
     var pasteLoadBtn = row.querySelector('[data-role="paste-load-btn"]');
     var colUnitSelect = row.querySelector('[data-role="col-unit"]');
     var offsetInput = row.querySelector('[data-role="offset"]');
+    var subtractSelect = row.querySelector('[data-role="subtract"]');
     var normalizeSelect = row.querySelector('[data-role="normalize"]');
     var lineStyleSelect = row.querySelector('[data-role="line-style"]');
     var visibleInput = row.querySelector('[data-role="visible"]');
@@ -1415,7 +1564,7 @@
     fileInput.addEventListener("change", function () {
       var file = fileInput.files[0];
       if (!file) return;
-      loadFileIntoRow(file, ds, row, colUnitSelect.value);
+      loadFileIntoRow(file, ds, row, colUnitSelect);
     });
 
     pasteToggleBtn.addEventListener("click", function () {
@@ -1427,6 +1576,7 @@
 
     pasteLoadBtn.addEventListener("click", function () {
       var parsed = parseCsvWide(pasteTextarea.value);
+      if (parsed.rows.length) colUnitSelect.value = guessColumnUnit(parsed.rows);
       var result = loadWideIntoDatasets(ds, row, parsed, colUnitSelect.value, "pasted data", "paste");
       setRowStatus(row, result.msg, !result.ok);
       if (result.ok) draw();
@@ -1435,6 +1585,11 @@
     offsetInput.addEventListener("input", function () {
       var v = parseFloat(offsetInput.value);
       ds.offset = isFinite(v) ? v : 0;
+      draw();
+    });
+
+    subtractSelect.addEventListener("change", function () {
+      ds.subtractDatasetId = subtractSelect.value || null;
       draw();
     });
 
@@ -1466,10 +1621,16 @@
     });
 
     removeBtn.addEventListener("click", function () {
+      var idx = datasets.indexOf(ds);
       removeDataset(ds);
       row.remove();
       if (!datasets.length) setStatus("No spectra loaded.", false);
       draw();
+      showUndoToast("Removed \"" + ((ds.label && ds.label.trim()) || "spectrum") + "\".", function () {
+        datasets.splice(idx, 0, ds);
+        datasetsContainer.insertBefore(row, datasetsContainer.children[idx] || null);
+        draw();
+      });
     });
 
     datasetsContainer.appendChild(frag);
@@ -1634,7 +1795,7 @@
       target = addDataset();
     }
     var colUnitSelect = target.row.querySelector('[data-role="col-unit"]');
-    loadFileIntoRow(file, target.ds, target.row, colUnitSelect.value);
+    loadFileIntoRow(file, target.ds, target.row, colUnitSelect);
     globalUploadInput.value = "";
   });
 
@@ -1670,14 +1831,22 @@
   clearBtn.addEventListener("click", function () {
     if (!datasets.length) return;
     if (!window.confirm("Remove all spectra?")) return;
+    var snapshot = buildProjectPayload();
     datasets.length = 0;
     datasetsContainer.innerHTML = "";
     setStatus("No spectra loaded.", false);
     draw();
+    showUndoToast("Cleared " + snapshot.datasets.length + " spectra.", function () {
+      restoreProjectPayload(snapshot);
+    });
   });
 
   newFolderBtn.addEventListener("click", function () {
     createFolder(null);
+  });
+
+  folderSearchInput.addEventListener("input", function () {
+    renderFolderTree();
   });
 
   exportAllBtn.addEventListener("click", function () {
@@ -1721,6 +1890,35 @@
   });
 
   window.addEventListener("resize", draw);
+
+  document.addEventListener("click", function (e) {
+    document.querySelectorAll(".spectra-actions-menu[open]").forEach(function (menu) {
+      if (!menu.contains(e.target)) menu.removeAttribute("open");
+    });
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Escape") return;
+    document.querySelectorAll(".spectra-actions-menu[open]").forEach(function (menu) {
+      menu.removeAttribute("open");
+    });
+  });
+
+  document.querySelectorAll(".spectra-actions-menu").forEach(function (menu) {
+    menu.addEventListener("toggle", function () {
+      var panel = menu.querySelector(".spectra-actions-menu-panel");
+      if (!panel) return;
+      panel.style.left = "0";
+      if (!menu.open) return;
+      requestAnimationFrame(function () {
+        var rect = panel.getBoundingClientRect();
+        var overflowRight = rect.right - window.innerWidth;
+        if (overflowRight > 0) {
+          panel.style.left = (-overflowRight - 8) + "px";
+        }
+      });
+    });
+  });
 
   function loadDefaultDemoView() {
     var first = addDataset();
