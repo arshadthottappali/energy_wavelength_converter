@@ -131,22 +131,30 @@
   "use strict";
 
   var HC_EV_NM = 1239.84198;
+  var OKABE_ITO = ["#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#888888"];
 
   var canvas = document.getElementById("spectra-canvas");
   if (!canvas) return;
 
   var ctx = canvas.getContext("2d");
+  var measureCtx = document.createElement("canvas").getContext("2d");
+
   var tooltip = document.getElementById("spectra-tooltip");
   var statusEl = document.getElementById("spectra-status");
   var axisUnitSelect = document.getElementById("spectra-axis-unit");
-  var colUnitSelect = document.getElementById("spectra-col-unit");
-  var fileInput = document.getElementById("spectra-file");
-  var exampleBtn = document.getElementById("spectra-example-btn");
+
+  var datasetsContainer = document.getElementById("spectra-datasets");
+  var addDatasetBtn = document.getElementById("spectra-add-dataset-btn");
+  var rowTemplate = document.getElementById("spectra-dataset-row-template");
+
   var pngBtn = document.getElementById("spectra-png-btn");
-  var csvBtn = document.getElementById("spectra-csv-btn");
+  var svgBtn = document.getElementById("spectra-svg-btn");
 
   var titleInput = document.getElementById("spectra-title");
-  var legendInput = document.getElementById("spectra-legend");
+  var bgModeSelect = document.getElementById("spectra-bg-mode");
+  var bgCustomWrap = document.getElementById("spectra-bg-custom-wrap");
+  var bgCustomInput = document.getElementById("spectra-bg-custom");
+  var closedBoxInput = document.getElementById("spectra-closed-box");
   var xMinInput = document.getElementById("spectra-xmin");
   var xMaxInput = document.getElementById("spectra-xmax");
   var xStepInput = document.getElementById("spectra-xstep");
@@ -155,8 +163,12 @@
   var yStepInput = document.getElementById("spectra-ystep");
   var resetAxesBtn = document.getElementById("spectra-reset-axes-btn");
 
-  var state = { xNm: [], y: [], label: "" };
-  var custom = { title: "", legend: "", xMin: null, xMax: null, xStep: null, yMin: null, yMax: null, yStep: null };
+  var datasets = [];
+  var datasetIdCounter = 0;
+  var custom = {
+    title: "", xMin: null, xMax: null, xStep: null, yMin: null, yMax: null, yStep: null,
+    bgMode: "transparent", bgCustomColor: "#ffffff", closedBox: false
+  };
   var plotBox = null;
   var padLeft = 58, padRight = 16, padTop = 56, padBottom = 46;
 
@@ -167,13 +179,32 @@
 
   function readCustom() {
     custom.title = titleInput.value;
-    custom.legend = legendInput.value;
+    custom.bgMode = bgModeSelect.value;
+    custom.bgCustomColor = bgCustomInput.value;
+    custom.closedBox = closedBoxInput.checked;
     custom.xMin = numOrNull(xMinInput);
     custom.xMax = numOrNull(xMaxInput);
     custom.xStep = numOrNull(xStepInput);
     custom.yMin = numOrNull(yMinInput);
     custom.yMax = numOrNull(yMaxInput);
     custom.yStep = numOrNull(yStepInput);
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" }[c];
+    });
+  }
+
+  function downloadBlob(filename, blob) {
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   }
 
   function stepTicks(min, max, step) {
@@ -262,6 +293,12 @@
     statusEl.classList.toggle("status-error", !!isError);
   }
 
+  function setRowStatus(row, msg, isError) {
+    var el = row.querySelector('[data-role="status"]');
+    el.textContent = msg;
+    el.classList.toggle("status-error", !!isError);
+  }
+
   function layout() {
     var rect = canvas.parentElement.getBoundingClientRect();
     var cssWidth = Math.max(280, rect.width);
@@ -275,33 +312,57 @@
     return { width: cssWidth, height: cssHeight };
   }
 
-  function draw() {
-    if (!state.xNm.length) return;
-    var dims = layout();
-    var width = dims.width, height = dims.height;
-    var bottomUnit = axisUnitSelect.value;
-    var topUnit = getPairUnit(bottomUnit);
-
-    ctx.clearRect(0, 0, width, height);
-
+  function readThemeColors() {
     var rootStyles = getComputedStyle(document.documentElement);
-    var textColor = rootStyles.getPropertyValue("--text-dim").trim() || "#9aa3b5";
-    var strongText = rootStyles.getPropertyValue("--text").trim() || "#e6e9f0";
-    var lineColor = rootStyles.getPropertyValue("--accent").trim() || "#5eead4";
-    var gridColor = rootStyles.getPropertyValue("--border").trim() || "#232838";
-    var fontFamily = getComputedStyle(document.body).fontFamily;
+    return {
+      text: rootStyles.getPropertyValue("--text-dim").trim() || "#9aa3b5",
+      strongText: rootStyles.getPropertyValue("--text").trim() || "#e6e9f0",
+      grid: rootStyles.getPropertyValue("--border").trim() || "#232838",
+      bgElev: rootStyles.getPropertyValue("--bg-elev").trim() || "#11151f"
+    };
+  }
 
-    var xVals = state.xNm.map(function (nm) { return convertFromNm(nm, bottomUnit); });
-    var autoXMin = Math.min.apply(null, xVals);
-    var autoXMax = Math.max.apply(null, xVals);
+  function resolveBackgroundColor(bgMode, bgCustomColor, themeBgElev) {
+    if (bgMode === "white") return "#ffffff";
+    if (bgMode === "theme") return themeBgElev;
+    if (bgMode === "custom") return bgCustomColor;
+    return null;
+  }
+
+  function legendChipWidth(mctx, text, font) {
+    mctx.font = font;
+    var swatchW = 14, boxPad = 6;
+    var textW = mctx.measureText(text).width;
+    return swatchW + boxPad * 2 + textW + 6;
+  }
+
+  function computeChartLayout(width, height, dsList, bottomUnit, customSettings) {
+    var topUnit = getPairUnit(bottomUnit);
+    var visible = dsList.filter(function (d) { return d.visible && d.xNm.length; });
+
+    var autoXMin = Infinity, autoXMax = -Infinity;
+    var autoYMin = 0, autoYMax = -Infinity;
+    visible.forEach(function (d) {
+      d.xNm.forEach(function (nm, i) {
+        var xv = convertFromNm(nm, bottomUnit);
+        if (xv < autoXMin) autoXMin = xv;
+        if (xv > autoXMax) autoXMax = xv;
+        var yv = d.y[i] + d.offset;
+        if (yv > autoYMax) autoYMax = yv;
+        if (yv < autoYMin) autoYMin = yv;
+      });
+    });
+    if (!isFinite(autoXMin)) { autoXMin = 0; autoXMax = 1; }
     if (autoXMin === autoXMax) { autoXMin -= 1; autoXMax += 1; }
-    var autoYMax = Math.max.apply(null, state.y) * 1.12 || 1;
+    if (!isFinite(autoYMax)) autoYMax = 1;
+    autoYMax = autoYMax * 1.12 || 1;
+    autoYMin = Math.min(0, autoYMin);
 
-    var xMin = custom.xMin != null ? custom.xMin : autoXMin;
-    var xMax = custom.xMax != null ? custom.xMax : autoXMax;
+    var xMin = customSettings.xMin != null ? customSettings.xMin : autoXMin;
+    var xMax = customSettings.xMax != null ? customSettings.xMax : autoXMax;
     if (xMin === xMax) xMax = xMin + 1;
-    var yMin = custom.yMin != null ? custom.yMin : 0;
-    var yMax = custom.yMax != null ? custom.yMax : autoYMax;
+    var yMin = customSettings.yMin != null ? customSettings.yMin : autoYMin;
+    var yMax = customSettings.yMax != null ? customSettings.yMax : autoYMax;
     if (yMax <= yMin) yMax = yMin + 1;
 
     var left = padLeft, right = width - padRight, top = padTop, bottom = height - padBottom;
@@ -310,47 +371,13 @@
     function xPix(v) { return left + ((v - xMin) / (xMax - xMin)) * plotW; }
     function yPix(v) { return bottom - ((v - yMin) / (yMax - yMin)) * plotH; }
 
-    plotBox = {
-      left: left, right: right, top: top, bottom: bottom,
-      xMin: xMin, xMax: xMax, yMin: yMin, yMax: yMax,
-      bottomUnit: bottomUnit, xPix: xPix, yPix: yPix
-    };
+    var yTicks = (stepTicks(yMin, yMax, customSettings.yStep) || niceTicks(yMin, yMax, 5))
+      .filter(function (t) { return t >= yMin - 1e-9 && t <= yMax + 1e-9; })
+      .map(function (t) { return { value: t, px: yPix(t) }; });
 
-    ctx.font = "11px " + fontFamily;
-
-    var yTicks = stepTicks(yMin, yMax, custom.yStep) || niceTicks(yMin, yMax, 5);
-    ctx.textAlign = "right";
-    ctx.textBaseline = "middle";
-    yTicks.forEach(function (t) {
-      if (t < yMin - 1e-9 || t > yMax + 1e-9) return;
-      var py = yPix(t);
-      ctx.beginPath();
-      ctx.moveTo(left, py);
-      ctx.lineTo(right, py);
-      ctx.strokeStyle = gridColor;
-      ctx.globalAlpha = 0.5;
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = textColor;
-      ctx.fillText(t.toFixed(2), left - 8, py);
-    });
-
-    var xTicks = stepTicks(xMin, xMax, custom.xStep) || niceTicks(xMin, xMax, 6);
-    ctx.textAlign = "center";
-    ctx.textBaseline = "top";
-    xTicks.forEach(function (t) {
-      if (t < xMin - 1e-9 || t > xMax + 1e-9) return;
-      var px = xPix(t);
-      ctx.beginPath();
-      ctx.moveTo(px, top);
-      ctx.lineTo(px, bottom);
-      ctx.strokeStyle = gridColor;
-      ctx.globalAlpha = 0.15;
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = textColor;
-      ctx.fillText(formatVal(t, bottomUnit), px, bottom + 8);
-    });
+    var xTicks = (stepTicks(xMin, xMax, customSettings.xStep) || niceTicks(xMin, xMax, 6))
+      .filter(function (t) { return t >= xMin - 1e-9 && t <= xMax + 1e-9; })
+      .map(function (t) { return { value: t, px: xPix(t) }; });
 
     var nmAtXMin = convertToNm(xMin, bottomUnit);
     var nmAtXMax = convertToNm(xMax, bottomUnit);
@@ -358,49 +385,131 @@
     var topAtXMax = convertFromNm(nmAtXMax, topUnit);
     var topLo = Math.min(topAtXMin, topAtXMax);
     var topHi = Math.max(topAtXMin, topAtXMax);
-    var topTicks = niceTicks(topLo, topHi, 5);
-    ctx.textBaseline = "bottom";
-    topTicks.forEach(function (tv) {
+    var topTicks = [];
+    niceTicks(topLo, topHi, 5).forEach(function (tv) {
       if (tv < topLo - 1e-9 || tv > topHi + 1e-9) return;
       var nmEquiv = convertToNm(tv, topUnit);
       var bottomEquiv = convertFromNm(nmEquiv, bottomUnit);
       if (bottomEquiv < xMin - 1e-9 || bottomEquiv > xMax + 1e-9) return;
-      var px = xPix(bottomEquiv);
+      topTicks.push({ value: tv, px: xPix(bottomEquiv) });
+    });
+
+    return {
+      left: left, right: right, top: top, bottom: bottom, plotW: plotW, plotH: plotH,
+      xMin: xMin, xMax: xMax, yMin: yMin, yMax: yMax,
+      bottomUnit: bottomUnit, topUnit: topUnit,
+      xPix: xPix, yPix: yPix,
+      yTicks: yTicks, xTicks: xTicks, topTicks: topTicks,
+      visible: visible
+    };
+  }
+
+  function draw() {
+    var dims = layout();
+    var width = dims.width, height = dims.height;
+    var bottomUnit = axisUnitSelect.value;
+    var theme = readThemeColors();
+    var fontFamily = getComputedStyle(document.body).fontFamily;
+
+    ctx.clearRect(0, 0, width, height);
+
+    var bgColor = resolveBackgroundColor(custom.bgMode, custom.bgCustomColor, theme.bgElev);
+    if (bgColor) {
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, width, height);
+    }
+
+    var L = computeChartLayout(width, height, datasets, bottomUnit, custom);
+    plotBox = L;
+
+    if (!L.visible.length) {
+      ctx.fillStyle = theme.text;
+      ctx.font = "13px " + fontFamily;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("No spectra loaded", width / 2, height / 2);
+      return;
+    }
+
+    ctx.font = "11px " + fontFamily;
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    L.yTicks.forEach(function (t) {
       ctx.beginPath();
-      ctx.moveTo(px, top);
-      ctx.lineTo(px, top - 5);
-      ctx.strokeStyle = textColor;
+      ctx.moveTo(L.left, t.px);
+      ctx.lineTo(L.right, t.px);
+      ctx.strokeStyle = theme.grid;
+      ctx.globalAlpha = 0.5;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = theme.text;
+      ctx.fillText(t.value.toFixed(2), L.left - 8, t.px);
+      if (custom.closedBox) {
+        ctx.beginPath();
+        ctx.moveTo(L.right, t.px);
+        ctx.lineTo(L.right - 5, t.px);
+        ctx.strokeStyle = theme.text;
+        ctx.globalAlpha = 0.6;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+    });
+
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    L.xTicks.forEach(function (t) {
+      ctx.beginPath();
+      ctx.moveTo(t.px, L.top);
+      ctx.lineTo(t.px, L.bottom);
+      ctx.strokeStyle = theme.grid;
+      ctx.globalAlpha = 0.15;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = theme.text;
+      ctx.fillText(formatVal(t.value, L.bottomUnit), t.px, L.bottom + 8);
+    });
+
+    ctx.textBaseline = "bottom";
+    L.topTicks.forEach(function (t) {
+      ctx.beginPath();
+      ctx.moveTo(t.px, L.top);
+      ctx.lineTo(t.px, L.top - 5);
+      ctx.strokeStyle = theme.text;
       ctx.globalAlpha = 0.6;
       ctx.stroke();
       ctx.globalAlpha = 1;
-      ctx.fillStyle = textColor;
-      ctx.fillText(formatVal(tv, topUnit), px, top - 7);
+      ctx.fillStyle = theme.text;
+      ctx.fillText(formatVal(t.value, L.topUnit), t.px, L.top - 7);
     });
 
-    ctx.strokeStyle = gridColor;
+    ctx.strokeStyle = theme.grid;
     ctx.globalAlpha = 1;
     ctx.beginPath();
-    ctx.moveTo(left, top);
-    ctx.lineTo(left, bottom);
-    ctx.lineTo(right, bottom);
+    ctx.moveTo(L.left, L.top);
+    ctx.lineTo(L.left, L.bottom);
+    ctx.lineTo(L.right, L.bottom);
+    if (custom.closedBox) {
+      ctx.lineTo(L.right, L.top);
+      ctx.lineTo(L.left, L.top);
+    }
     ctx.stroke();
 
-    ctx.fillStyle = strongText;
+    ctx.fillStyle = theme.strongText;
     ctx.font = "12px " + fontFamily;
     ctx.textAlign = "center";
     ctx.textBaseline = "alphabetic";
-    ctx.fillText(unitLabel(bottomUnit), (left + right) / 2, height - 8);
-    ctx.fillText(unitLabel(topUnit), (left + right) / 2, 32);
+    ctx.fillText(unitLabel(L.bottomUnit), (L.left + L.right) / 2, height - 8);
+    ctx.fillText(unitLabel(L.topUnit), (L.left + L.right) / 2, 32);
 
     ctx.save();
-    ctx.translate(14, (top + bottom) / 2);
+    ctx.translate(14, (L.top + L.bottom) / 2);
     ctx.rotate(-Math.PI / 2);
     ctx.textAlign = "center";
     ctx.fillText("Absorbance (a.u.)", 0, 0);
     ctx.restore();
 
     if (custom.title && custom.title.trim()) {
-      ctx.fillStyle = strongText;
+      ctx.fillStyle = theme.strongText;
       ctx.font = "bold 13px " + fontFamily;
       ctx.textAlign = "center";
       ctx.textBaseline = "alphabetic";
@@ -409,78 +518,167 @@
 
     ctx.save();
     ctx.beginPath();
-    ctx.rect(left, top, plotW, plotH);
+    ctx.rect(L.left, L.top, L.plotW, L.plotH);
     ctx.clip();
+    L.visible.forEach(function (d) {
+      ctx.beginPath();
+      d.xNm.forEach(function (nm, i) {
+        var xv = convertFromNm(nm, L.bottomUnit);
+        var px = L.xPix(xv), py = L.yPix(d.y[i] + d.offset);
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      });
+      ctx.strokeStyle = d.color;
+      ctx.lineWidth = 2;
+      ctx.stroke();
 
-    ctx.beginPath();
-    state.xNm.forEach(function (nm, i) {
-      var xv = convertFromNm(nm, bottomUnit);
-      var px = xPix(xv), py = yPix(state.y[i]);
-      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      ctx.lineTo(L.xPix(convertFromNm(d.xNm[d.xNm.length - 1], L.bottomUnit)), L.bottom);
+      ctx.lineTo(L.xPix(convertFromNm(d.xNm[0], L.bottomUnit)), L.bottom);
+      ctx.closePath();
+      ctx.fillStyle = d.color;
+      ctx.globalAlpha = 0.1;
+      ctx.fill();
+      ctx.globalAlpha = 1;
     });
-    ctx.strokeStyle = lineColor;
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    ctx.lineTo(xPix(convertFromNm(state.xNm[state.xNm.length - 1], bottomUnit)), bottom);
-    ctx.lineTo(xPix(convertFromNm(state.xNm[0], bottomUnit)), bottom);
-    ctx.closePath();
-    ctx.fillStyle = lineColor;
-    ctx.globalAlpha = 0.08;
-    ctx.fill();
-    ctx.globalAlpha = 1;
     ctx.restore();
 
-    var legendText = (custom.legend && custom.legend.trim()) || state.label;
-    if (legendText) {
-      ctx.font = "11px " + fontFamily;
-      var swatchW = 14, boxPad = 6;
-      var textW = ctx.measureText(legendText).width;
-      var boxW = swatchW + boxPad * 2 + textW + 6;
-      var bx = right - boxW - 6, by = top + 6;
-      ctx.fillStyle = rootStyles.getPropertyValue("--bg-elev").trim() || "#11151f";
+    ctx.font = "11px " + fontFamily;
+    var chipY = L.top + 6;
+    L.visible.forEach(function (d) {
+      var legendText = (d.label && d.label.trim()) || "Spectrum";
+      var boxW = legendChipWidth(ctx, legendText, "11px " + fontFamily);
+      var bx = L.right - boxW - 6, by = chipY;
+      ctx.fillStyle = theme.bgElev;
       ctx.globalAlpha = 0.85;
       ctx.fillRect(bx, by, boxW, 20);
       ctx.globalAlpha = 1;
-      ctx.strokeStyle = lineColor;
+      ctx.strokeStyle = d.color;
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(bx + boxPad, by + 10);
-      ctx.lineTo(bx + boxPad + swatchW, by + 10);
+      ctx.moveTo(bx + 6, by + 10);
+      ctx.lineTo(bx + 20, by + 10);
       ctx.stroke();
-      ctx.fillStyle = strongText;
+      ctx.fillStyle = theme.strongText;
       ctx.textAlign = "left";
       ctx.textBaseline = "middle";
-      ctx.fillText(legendText, bx + boxPad + swatchW + 6, by + 10);
-    }
+      ctx.fillText(legendText, bx + 26, by + 10);
+      chipY += 24;
+    });
   }
 
-  function nearestIndex(nmTarget) {
-    var lo = 0, hi = state.xNm.length - 1;
+  function buildSvgString(width, height, dsList, bottomUnit, customSettings, theme) {
+    var fontFamily = '-apple-system, "Segoe UI", Roboto, Arial, sans-serif';
+    var L = computeChartLayout(width, height, dsList, bottomUnit, customSettings);
+    var parts = [];
+    parts.push('<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height +
+      '" viewBox="0 0 ' + width + ' ' + height + '" font-family=\'' + fontFamily + '\'>');
+
+    var bgColor = resolveBackgroundColor(customSettings.bgMode, customSettings.bgCustomColor, theme.bgElev);
+    if (bgColor) {
+      parts.push('<rect x="0" y="0" width="' + width + '" height="' + height + '" fill="' + bgColor + '"/>');
+    }
+
+    if (!L.visible.length) {
+      parts.push('<text x="' + (width / 2) + '" y="' + (height / 2) + '" text-anchor="middle" fill="' + theme.text + '" font-size="13">No spectra loaded</text>');
+      parts.push('</svg>');
+      return parts.join("");
+    }
+
+    L.yTicks.forEach(function (t) {
+      parts.push('<line x1="' + L.left + '" y1="' + t.px + '" x2="' + L.right + '" y2="' + t.px + '" stroke="' + theme.grid + '" stroke-opacity="0.5"/>');
+      parts.push('<text x="' + (L.left - 8) + '" y="' + t.px + '" text-anchor="end" dominant-baseline="middle" fill="' + theme.text + '" font-size="11">' + t.value.toFixed(2) + '</text>');
+      if (customSettings.closedBox) {
+        parts.push('<line x1="' + L.right + '" y1="' + t.px + '" x2="' + (L.right - 5) + '" y2="' + t.px + '" stroke="' + theme.text + '" stroke-opacity="0.6"/>');
+      }
+    });
+
+    L.xTicks.forEach(function (t) {
+      parts.push('<line x1="' + t.px + '" y1="' + L.top + '" x2="' + t.px + '" y2="' + L.bottom + '" stroke="' + theme.grid + '" stroke-opacity="0.15"/>');
+      parts.push('<text x="' + t.px + '" y="' + (L.bottom + 8) + '" text-anchor="middle" dominant-baseline="hanging" fill="' + theme.text + '" font-size="11">' + escapeHtml(formatVal(t.value, L.bottomUnit)) + '</text>');
+    });
+
+    L.topTicks.forEach(function (t) {
+      parts.push('<line x1="' + t.px + '" y1="' + L.top + '" x2="' + t.px + '" y2="' + (L.top - 5) + '" stroke="' + theme.text + '" stroke-opacity="0.6"/>');
+      parts.push('<text x="' + t.px + '" y="' + (L.top - 7) + '" text-anchor="middle" fill="' + theme.text + '" font-size="11">' + escapeHtml(formatVal(t.value, L.topUnit)) + '</text>');
+    });
+
+    var boxPath = "M" + L.left + " " + L.top + " L" + L.left + " " + L.bottom + " L" + L.right + " " + L.bottom;
+    if (customSettings.closedBox) boxPath += " L" + L.right + " " + L.top + " L" + L.left + " " + L.top;
+    parts.push('<path d="' + boxPath + '" fill="none" stroke="' + theme.grid + '"/>');
+
+    parts.push('<text x="' + ((L.left + L.right) / 2) + '" y="' + (height - 8) + '" text-anchor="middle" fill="' + theme.strongText + '" font-size="12">' + escapeHtml(unitLabel(L.bottomUnit)) + '</text>');
+    parts.push('<text x="' + ((L.left + L.right) / 2) + '" y="32" text-anchor="middle" fill="' + theme.strongText + '" font-size="12">' + escapeHtml(unitLabel(L.topUnit)) + '</text>');
+    parts.push('<text x="14" y="' + ((L.top + L.bottom) / 2) + '" text-anchor="middle" fill="' + theme.strongText + '" font-size="12" transform="rotate(-90 14 ' + ((L.top + L.bottom) / 2) + ')">Absorbance (a.u.)</text>');
+
+    if (customSettings.title && customSettings.title.trim()) {
+      parts.push('<text x="' + (width / 2) + '" y="16" text-anchor="middle" fill="' + theme.strongText + '" font-size="13" font-weight="bold">' + escapeHtml(customSettings.title.trim()) + '</text>');
+    }
+
+    var clipId = "spectra-clip-" + Date.now();
+    parts.push('<clipPath id="' + clipId + '"><rect x="' + L.left + '" y="' + L.top + '" width="' + L.plotW + '" height="' + L.plotH + '"/></clipPath>');
+    parts.push('<g clip-path="url(#' + clipId + ')">');
+    L.visible.forEach(function (d) {
+      var linePts = d.xNm.map(function (nm, i) {
+        var xv = convertFromNm(nm, L.bottomUnit);
+        return L.xPix(xv) + "," + L.yPix(d.y[i] + d.offset);
+      }).join(" ");
+      var fillPts = linePts +
+        " " + L.xPix(convertFromNm(d.xNm[d.xNm.length - 1], L.bottomUnit)) + "," + L.bottom +
+        " " + L.xPix(convertFromNm(d.xNm[0], L.bottomUnit)) + "," + L.bottom;
+      parts.push('<polygon points="' + fillPts + '" fill="' + d.color + '" fill-opacity="0.1"/>');
+      parts.push('<polyline points="' + linePts + '" fill="none" stroke="' + d.color + '" stroke-width="2"/>');
+    });
+    parts.push('</g>');
+
+    var chipY = L.top + 6;
+    L.visible.forEach(function (d) {
+      var legendText = (d.label && d.label.trim()) || "Spectrum";
+      var boxW = legendChipWidth(measureCtx, legendText, "11px " + fontFamily);
+      var bx = L.right - boxW - 6, by = chipY;
+      parts.push('<rect x="' + bx + '" y="' + by + '" width="' + boxW + '" height="20" fill="' + theme.bgElev + '" fill-opacity="0.85"/>');
+      parts.push('<line x1="' + (bx + 6) + '" y1="' + (by + 10) + '" x2="' + (bx + 20) + '" y2="' + (by + 10) + '" stroke="' + d.color + '" stroke-width="2"/>');
+      parts.push('<text x="' + (bx + 26) + '" y="' + (by + 10) + '" dominant-baseline="middle" fill="' + theme.strongText + '" font-size="11">' + escapeHtml(legendText) + '</text>');
+      chipY += 24;
+    });
+
+    parts.push('</svg>');
+    return parts.join("");
+  }
+
+  function nearestIndexIn(xNmArr, nmTarget) {
+    var lo = 0, hi = xNmArr.length - 1;
     while (lo < hi) {
       var mid = (lo + hi) >> 1;
-      if (state.xNm[mid] < nmTarget) lo = mid + 1; else hi = mid;
+      if (xNmArr[mid] < nmTarget) lo = mid + 1; else hi = mid;
     }
-    if (lo > 0 && Math.abs(state.xNm[lo - 1] - nmTarget) < Math.abs(state.xNm[lo] - nmTarget)) return lo - 1;
+    if (lo > 0 && Math.abs(xNmArr[lo - 1] - nmTarget) < Math.abs(xNmArr[lo] - nmTarget)) return lo - 1;
     return lo;
   }
 
   canvas.addEventListener("mousemove", function (e) {
-    if (!plotBox || !state.xNm.length) return;
+    if (!plotBox || !plotBox.visible.length) { tooltip.style.display = "none"; return; }
     var rect = canvas.getBoundingClientRect();
     var mx = e.clientX - rect.left;
     var my = e.clientY - rect.top;
-    if (mx < plotBox.left || mx > plotBox.right) { tooltip.style.display = "none"; return; }
+    if (mx < plotBox.left || mx > plotBox.right || my < plotBox.top || my > plotBox.bottom) {
+      tooltip.style.display = "none";
+      return;
+    }
     var bottomVal = plotBox.xMin + ((mx - plotBox.left) / (plotBox.right - plotBox.left)) * (plotBox.xMax - plotBox.xMin);
     var nmTarget = convertToNm(bottomVal, plotBox.bottomUnit);
-    var idx = nearestIndex(nmTarget);
-    var nm = state.xNm[idx], yVal = state.y[idx];
-    var ev = convertFromNm(nm, "eV"), cm1 = convertFromNm(nm, "cm-1");
+
+    var lines = [];
+    plotBox.visible.forEach(function (d) {
+      var idx = nearestIndexIn(d.xNm, nmTarget);
+      var nm = d.xNm[idx], yVal = d.y[idx] + d.offset;
+      var ev = convertFromNm(nm, "eV"), cm1 = convertFromNm(nm, "cm-1");
+      var legendText = (d.label && d.label.trim()) || "Spectrum";
+      lines.push('<span style="color:' + d.color + '">&#9679;</span> ' + escapeHtml(legendText) + ": " +
+        formatVal(nm, "nm") + " nm, " + formatVal(ev, "eV") + " eV, " + formatVal(cm1, "cm-1") + " cm&#8315;&sup1;, Abs " + yVal.toFixed(3));
+    });
     tooltip.style.display = "block";
-    tooltip.style.left = plotBox.xPix(convertFromNm(nm, plotBox.bottomUnit)) + "px";
-    tooltip.style.top = Math.min(plotBox.yPix(yVal), my) + "px";
-    tooltip.innerHTML = formatVal(nm, "nm") + " nm &middot; " + formatVal(ev, "eV") + " eV &middot; " +
-      formatVal(cm1, "cm-1") + " cm⁻¹<br>Absorbance: " + yVal.toFixed(3);
+    tooltip.style.left = mx + "px";
+    tooltip.style.top = my + "px";
+    tooltip.innerHTML = lines.join("<br>");
   });
 
   canvas.addEventListener("mouseleave", function () {
@@ -499,37 +697,180 @@
     return rows;
   }
 
-  function loadFromRows(rows, col1Unit, label) {
+  function loadIntoDataset(ds, rows, col1Unit, label) {
     if (rows.length < 2) {
-      setStatus("Couldn't find at least 2 numeric rows. Expected two columns: value, absorbance.", true);
-      return false;
+      return { ok: false, msg: "Couldn't find at least 2 numeric rows. Expected two columns: value, absorbance." };
     }
     var pts = rows.map(function (r) { return [convertToNm(r[0], col1Unit), r[1]]; });
     pts.sort(function (a, b) { return a[0] - b[0]; });
-    state.xNm = pts.map(function (p) { return p[0]; });
-    state.y = pts.map(function (p) { return p[1]; });
-    state.label = label;
-    setStatus("Loaded " + label + " (" + pts.length + " points).", false);
-    return true;
+    ds.xNm = pts.map(function (p) { return p[0]; });
+    ds.y = pts.map(function (p) { return p[1]; });
+    ds.colUnit = col1Unit;
+    return { ok: true, msg: "Loaded " + label + " (" + pts.length + " points)." };
   }
 
-  fileInput.addEventListener("change", function () {
-    var file = fileInput.files[0];
-    if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function () {
-      var rows = parseCsvText(String(reader.result));
-      if (loadFromRows(rows, colUnitSelect.value, file.name)) draw();
+  function paletteColorFor(idx) {
+    return OKABE_ITO[idx % OKABE_ITO.length];
+  }
+
+  function createDataset() {
+    var idx = datasetIdCounter++;
+    var ds = {
+      id: "ds" + idx,
+      xNm: [], y: [], label: "",
+      color: paletteColorFor(idx),
+      colorAuto: true,
+      paletteIndex: idx % OKABE_ITO.length,
+      offset: 0,
+      visible: true,
+      colUnit: "nm",
+      source: null
     };
-    reader.onerror = function () { setStatus("Could not read that file.", true); };
-    reader.readAsText(file);
+    datasets.push(ds);
+    return ds;
+  }
+
+  function removeDataset(ds) {
+    var idx = datasets.indexOf(ds);
+    if (idx !== -1) datasets.splice(idx, 1);
+  }
+
+  function createDatasetRow(ds) {
+    var frag = rowTemplate.content.cloneNode(true);
+    var row = frag.querySelector(".spectra-dataset-row");
+
+    var colorInput = row.querySelector('[data-role="color"]');
+    var legendInput = row.querySelector('[data-role="legend"]');
+    var exampleBtn = row.querySelector('[data-role="example-btn"]');
+    var fileInput = row.querySelector('[data-role="file-input"]');
+    var pasteToggleBtn = row.querySelector('[data-role="paste-toggle-btn"]');
+    var pasteTextarea = row.querySelector('[data-role="paste-textarea"]');
+    var pasteLoadBtn = row.querySelector('[data-role="paste-load-btn"]');
+    var colUnitSelect = row.querySelector('[data-role="col-unit"]');
+    var offsetInput = row.querySelector('[data-role="offset"]');
+    var visibleInput = row.querySelector('[data-role="visible"]');
+    var downloadBtn = row.querySelector('[data-role="download-btn"]');
+    var removeBtn = row.querySelector('[data-role="remove-btn"]');
+
+    colorInput.value = ds.color;
+
+    function applyLoadResult(result, defaultLabel) {
+      if (!result.ok) { setRowStatus(row, result.msg, true); return; }
+      if (!legendInput.value.trim()) legendInput.value = defaultLabel;
+      ds.label = legendInput.value;
+      setRowStatus(row, result.msg, false);
+      draw();
+    }
+
+    colorInput.addEventListener("input", function () {
+      ds.color = colorInput.value;
+      ds.colorAuto = false;
+      draw();
+    });
+
+    legendInput.addEventListener("input", function () {
+      ds.label = legendInput.value;
+      draw();
+    });
+
+    exampleBtn.addEventListener("click", function () {
+      fileInput.value = "";
+      var ex = generateExampleSpectrum();
+      ds.xNm = ex.xNm; ds.y = ex.y; ds.source = "example";
+      applyLoadResult({
+        ok: true,
+        msg: "Loaded " + ex.label + " (" + ex.xNm.length + " points). Approximate shape for demonstration — not measured data."
+      }, ex.label);
+    });
+
+    fileInput.addEventListener("change", function () {
+      var file = fileInput.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function () {
+        var rows = parseCsvText(String(reader.result));
+        var result = loadIntoDataset(ds, rows, colUnitSelect.value, file.name);
+        ds.source = "file";
+        applyLoadResult(result, file.name);
+      };
+      reader.onerror = function () { setRowStatus(row, "Could not read that file.", true); };
+      reader.readAsText(file);
+    });
+
+    pasteToggleBtn.addEventListener("click", function () {
+      var showing = !pasteTextarea.hidden;
+      pasteTextarea.hidden = showing;
+      pasteLoadBtn.hidden = showing;
+      if (!showing) pasteTextarea.focus();
+    });
+
+    pasteLoadBtn.addEventListener("click", function () {
+      var rows = parseCsvText(pasteTextarea.value);
+      var result = loadIntoDataset(ds, rows, colUnitSelect.value, "pasted data");
+      ds.source = "paste";
+      applyLoadResult(result, "pasted data");
+    });
+
+    offsetInput.addEventListener("input", function () {
+      var v = parseFloat(offsetInput.value);
+      ds.offset = isFinite(v) ? v : 0;
+      draw();
+    });
+
+    visibleInput.addEventListener("change", function () {
+      ds.visible = visibleInput.checked;
+      draw();
+    });
+
+    downloadBtn.addEventListener("click", function () {
+      if (!ds.xNm.length) return;
+      var unit = axisUnitSelect.value;
+      var rows = [[unitLabel(unit), "Absorbance"]];
+      ds.xNm.forEach(function (nm, i) {
+        rows.push([convertFromNm(nm, unit).toFixed(unit === "nm" ? 2 : 4), ds.y[i]]);
+      });
+      var csv = rows.map(function (r) { return r.join(","); }).join("\r\n");
+      var safeName = ((ds.label || "spectrum").trim() || "spectrum").replace(/[^a-z0-9-_]+/gi, "-").toLowerCase();
+      downloadBlob(safeName + "-" + unit.replace("-", "") + ".csv", new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+    });
+
+    removeBtn.addEventListener("click", function () {
+      removeDataset(ds);
+      row.remove();
+      if (!datasets.length) setStatus("No spectra loaded.", false);
+      draw();
+    });
+
+    datasetsContainer.appendChild(frag);
+    return row;
+  }
+
+  function addDataset() {
+    var ds = createDataset();
+    var row = createDatasetRow(ds);
+    return { ds: ds, row: row };
+  }
+
+  addDatasetBtn.addEventListener("click", function () {
+    addDataset();
+    setStatus("", false);
   });
 
-  exampleBtn.addEventListener("click", function () {
-    fileInput.value = "";
-    var ex = generateExampleSpectrum();
-    state.xNm = ex.xNm; state.y = ex.y; state.label = ex.label;
-    setStatus("Loaded " + ex.label + " (" + ex.xNm.length + " points). Approximate shape for demonstration — not measured data.", false);
+  bgModeSelect.addEventListener("change", function () {
+    bgCustomWrap.hidden = bgModeSelect.value !== "custom";
+    readCustom();
+    draw();
+  });
+
+  [titleInput, xMinInput, xMaxInput, xStepInput, yMinInput, yMaxInput, yStepInput, bgCustomInput].forEach(function (el) {
+    el.addEventListener("input", function () {
+      readCustom();
+      draw();
+    });
+  });
+
+  closedBoxInput.addEventListener("change", function () {
+    readCustom();
     draw();
   });
 
@@ -539,15 +880,8 @@
     draw();
   });
 
-  [titleInput, legendInput, xMinInput, xMaxInput, xStepInput, yMinInput, yMaxInput, yStepInput].forEach(function (el) {
-    el.addEventListener("input", function () {
-      readCustom();
-      draw();
-    });
-  });
-
   resetAxesBtn.addEventListener("click", function () {
-    [titleInput, legendInput, xMinInput, xMaxInput, xStepInput, yMinInput, yMaxInput, yStepInput].forEach(function (el) {
+    [titleInput, xMinInput, xMaxInput, xStepInput, yMinInput, yMaxInput, yStepInput].forEach(function (el) {
       el.value = "";
     });
     readCustom();
@@ -556,42 +890,19 @@
 
   pngBtn.addEventListener("click", function () {
     canvas.toBlob(function (blob) {
-      var url = URL.createObjectURL(blob);
-      var link = document.createElement("a");
-      link.href = url;
-      link.download = "absorption-spectrum.png";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      downloadBlob("absorption-spectrum.png", blob);
     });
   });
 
-  csvBtn.addEventListener("click", function () {
-    if (!state.xNm.length) return;
-    var unit = axisUnitSelect.value;
-    var rows = [[unitLabel(unit), "Absorbance"]];
-    state.xNm.forEach(function (nm, i) {
-      rows.push([convertFromNm(nm, unit).toFixed(unit === "nm" ? 2 : 4), state.y[i]]);
-    });
-    var csv = rows.map(function (r) { return r.join(","); }).join("\r\n");
-    var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    var url = URL.createObjectURL(blob);
-    var link = document.createElement("a");
-    link.href = url;
-    link.download = "absorption-spectrum-" + unit.replace("-", "") + ".csv";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+  svgBtn.addEventListener("click", function () {
+    var width = canvas.clientWidth || 600, height = 360;
+    var theme = readThemeColors();
+    var svgStr = buildSvgString(width, height, datasets, axisUnitSelect.value, custom, theme);
+    downloadBlob("absorption-spectrum.svg", new Blob([svgStr], { type: "image/svg+xml;charset=utf-8;" }));
   });
 
-  window.addEventListener("resize", function () {
-    if (state.xNm.length) draw();
-  });
+  window.addEventListener("resize", draw);
 
-  var initial = generateExampleSpectrum();
-  state.xNm = initial.xNm; state.y = initial.y; state.label = initial.label;
-  setStatus("Loaded " + initial.label + " (" + initial.xNm.length + " points). Approximate shape for demonstration — not measured data.", false);
-  draw();
+  var first = addDataset();
+  first.row.querySelector('[data-role="example-btn"]').click();
 })();
