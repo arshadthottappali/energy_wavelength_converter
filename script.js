@@ -685,28 +685,75 @@
     tooltip.style.display = "none";
   });
 
-  function parseCsvText(text) {
-    var lines = text.split(/\r\n|\n|\r/).map(function (l) { return l.trim(); }).filter(function (l) { return l.length > 0; });
-    var rows = [];
-    lines.forEach(function (line) {
-      var parts = line.split(/[,\t;]/).map(function (s) { return s.trim(); });
-      if (parts.length < 2) return;
-      var a = parseFloat(parts[0]), b = parseFloat(parts[1]);
-      if (isFinite(a) && isFinite(b)) rows.push([a, b]);
-    });
-    return rows;
+  function isNumericRow(cells) {
+    return cells.length >= 2 && cells.every(function (c) { return c !== "" && isFinite(parseFloat(c)); });
   }
 
-  function loadIntoDataset(ds, rows, col1Unit, label) {
-    if (rows.length < 2) {
-      return { ok: false, msg: "Couldn't find at least 2 numeric rows. Expected two columns: value, absorbance." };
+  function parseCsvWide(text) {
+    var lines = text.split(/\r\n|\n|\r/).map(function (l) { return l.trim(); }).filter(function (l) { return l.length > 0; });
+    var splitLine = function (line) { return line.split(/[,\t;]/).map(function (s) { return s.trim(); }); };
+    if (!lines.length) return { headers: null, rows: [] };
+
+    var firstCells = splitLine(lines[0]);
+    var headers = null;
+    var startIdx = 0;
+    if (!isNumericRow(firstCells)) {
+      headers = firstCells;
+      startIdx = 1;
     }
-    var pts = rows.map(function (r) { return [convertToNm(r[0], col1Unit), r[1]]; });
-    pts.sort(function (a, b) { return a[0] - b[0]; });
-    ds.xNm = pts.map(function (p) { return p[0]; });
-    ds.y = pts.map(function (p) { return p[1]; });
-    ds.colUnit = col1Unit;
-    return { ok: true, msg: "Loaded " + label + " (" + pts.length + " points)." };
+
+    var rows = [];
+    var numCols = null;
+    for (var i = startIdx; i < lines.length; i++) {
+      var cells = splitLine(lines[i]);
+      if (!isNumericRow(cells)) continue;
+      if (numCols === null) numCols = cells.length;
+      if (cells.length !== numCols) continue;
+      rows.push(cells.map(function (c) { return parseFloat(c); }));
+    }
+
+    return { headers: headers, rows: rows };
+  }
+
+  function loadWideIntoDatasets(ds, row, parsed, col1Unit, sourceLabel, source) {
+    var rows = parsed.rows;
+    if (rows.length < 2 || rows[0].length < 2) {
+      return {
+        ok: false,
+        msg: "Couldn't find at least 2 numeric columns. Expected wavelength (or energy/wavenumber) in column 1, then one or more sample columns."
+      };
+    }
+    var numCols = rows[0].length;
+    rows = rows.slice().sort(function (a, b) { return a[0] - b[0]; });
+    var xNm = rows.map(function (r) { return convertToNm(r[0], col1Unit); });
+    var labels = [];
+
+    for (var col = 1; col < numCols; col++) {
+      var y = rows.map(function (r) { return r[col]; });
+      var headerName = parsed.headers && parsed.headers[col] ? parsed.headers[col] : null;
+      var label = headerName || (numCols > 2 ? "Sample " + col : sourceLabel);
+      labels.push(label);
+
+      var targetDs, targetRow;
+      if (col === 1) {
+        targetDs = ds; targetRow = row;
+      } else {
+        var added = addDataset();
+        targetDs = added.ds; targetRow = added.row;
+      }
+      targetDs.xNm = xNm.slice();
+      targetDs.y = y;
+      targetDs.colUnit = col1Unit;
+      targetDs.source = source;
+      var legendEl = targetRow.querySelector('[data-role="legend"]');
+      if (!legendEl.value.trim()) legendEl.value = label;
+      targetDs.label = legendEl.value;
+    }
+
+    var msg = numCols > 2
+      ? "Loaded " + (numCols - 1) + " spectra from " + sourceLabel + " (" + labels.join(", ") + "), " + rows.length + " points each."
+      : "Loaded " + sourceLabel + " (" + rows.length + " points).";
+    return { ok: true, msg: msg };
   }
 
   function paletteColorFor(idx) {
@@ -788,10 +835,10 @@
       if (!file) return;
       var reader = new FileReader();
       reader.onload = function () {
-        var rows = parseCsvText(String(reader.result));
-        var result = loadIntoDataset(ds, rows, colUnitSelect.value, file.name);
-        ds.source = "file";
-        applyLoadResult(result, file.name);
+        var parsed = parseCsvWide(String(reader.result));
+        var result = loadWideIntoDatasets(ds, row, parsed, colUnitSelect.value, file.name, "file");
+        setRowStatus(row, result.msg, !result.ok);
+        if (result.ok) draw();
       };
       reader.onerror = function () { setRowStatus(row, "Could not read that file.", true); };
       reader.readAsText(file);
@@ -805,10 +852,10 @@
     });
 
     pasteLoadBtn.addEventListener("click", function () {
-      var rows = parseCsvText(pasteTextarea.value);
-      var result = loadIntoDataset(ds, rows, colUnitSelect.value, "pasted data");
-      ds.source = "paste";
-      applyLoadResult(result, "pasted data");
+      var parsed = parseCsvWide(pasteTextarea.value);
+      var result = loadWideIntoDatasets(ds, row, parsed, colUnitSelect.value, "pasted data", "paste");
+      setRowStatus(row, result.msg, !result.ok);
+      if (result.ok) draw();
     });
 
     offsetInput.addEventListener("input", function () {

@@ -148,6 +148,14 @@
         "@type": "Answer",
         "text": "Open \"Customize chart\" and check \"Closed axis box.\" This draws the top and right border lines plus mirrored tick marks on the right edge, matching the GraphPad Prism convention many biology and chemistry journals expect, instead of the open-box matplotlib-style default."
       }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I upload one CSV with multiple sample spectra at once?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Upload or paste a file with wavelength (or energy or wavenumber) in the first column and one absorbance column per sample after it. Each extra column is automatically split into its own spectrum with an auto-assigned colorblind-safe color, using the column header text as its legend label when the file has one."
+      }
     }
   ]
 }
@@ -324,7 +332,7 @@
         <button type="button" id="spectra-png-btn" class="btn btn-secondary">Download chart (PNG)</button>
         <button type="button" id="spectra-svg-btn" class="btn btn-secondary">Download chart (SVG)</button>
       </div>
-      <p class="hint">Each spectrum row has its own CSV upload, paste box, and CSV download (converted to the selected unit, offset excluded). The example spectrum is an illustrative curve for demonstration, not measured data.</p>
+      <p class="hint">Each row loads one CSV or pasted block — but a file with wavelength in column 1 and several sample columns after it (e.g. multiple absorbance readings) automatically expands into one spectrum per column, each in its own row. Column headers, if present, become the legend labels. Every row also has its own CSV download (converted to the selected unit, offset excluded). The example spectrum is an illustrative curve for demonstration, not measured data.</p>
     </div>
 
     <template id="spectra-dataset-row-template">
@@ -339,7 +347,7 @@
           </label>
           <button type="button" data-role="paste-toggle-btn" class="btn btn-secondary">Paste data</button>
         </div>
-        <textarea data-role="paste-textarea" class="spectra-paste-textarea" hidden placeholder="Paste two columns, e.g. copied from Excel: wavelength[tab]absorbance"></textarea>
+        <textarea data-role="paste-textarea" class="spectra-paste-textarea" hidden placeholder="Paste columns copied from Excel: wavelength, then one or more sample columns. Extra columns become their own spectrum."></textarea>
         <button type="button" data-role="paste-load-btn" class="btn btn-secondary" hidden>Load pasted data</button>
         <div class="spectra-row-controls">
           <label class="field">
@@ -471,6 +479,10 @@
     <div class="faq-item">
       <h3>How do I add a closed axis box like GraphPad Prism?</h3>
       <p>Open "Customize chart" and check "Closed axis box" to add the top/right border and mirrored tick marks, matching the convention many biology and chemistry journals expect.</p>
+    </div>
+    <div class="faq-item">
+      <h3>Can I upload one CSV with multiple sample spectra at once?</h3>
+      <p>Yes — a file with wavelength in column 1 and several sample columns after it automatically splits into one spectrum per column, using the column headers as legend labels if present.</p>
     </div>
   </section>
 
