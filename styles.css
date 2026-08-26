@@ -36,7 +36,7 @@ html, body {
 }
 
 .wrap {
-  max-width: 880px;
+  max-width: 960px;
   margin: 0 auto;
   padding: 0 1.5rem;
 }
@@ -56,8 +56,17 @@ html, body {
 .tagline {
   margin: 0;
   color: var(--text-dim);
-  font-size: 0.98rem;
-  max-width: 60ch;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+@media (max-width: 640px) {
+  .tagline {
+    white-space: normal;
+  }
 }
 
 main {
@@ -270,4 +279,93 @@ td:first-child {
   .site-header { padding: 1.75rem 0 1.25rem; }
   .site-header h1 { font-size: 1.3rem; }
   main { padding: 1.5rem 1rem 2rem; }
+}
+
+/* Spectrum viewer */
+
+.spectra-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.spectra-controls select {
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  padding: 0.6rem 0.7rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  outline: none;
+}
+
+.spectra-controls select:focus {
+  border-color: var(--accent);
+}
+
+.spectra-load-row {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.file-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--sans);
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 0.6rem 1.1rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  color: var(--text);
+  background: transparent;
+  transition: border-color 0.15s ease;
+}
+
+.file-btn:hover {
+  border-color: var(--accent);
+}
+
+.spectra-chart-wrap {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+#spectra-canvas {
+  display: block;
+  width: 100%;
+  touch-action: none;
+}
+
+.spectra-tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.76rem;
+  font-family: var(--mono);
+  color: var(--text);
+  line-height: 1.5;
+  transform: translate(-50%, -100%);
+  white-space: nowrap;
+  display: none;
+  z-index: 5;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+}
+
+.spectra-status {
+  min-height: 1.2em;
+}
+
+.status-error {
+  color: var(--danger);
 }

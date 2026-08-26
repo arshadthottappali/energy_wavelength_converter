@@ -43,7 +43,8 @@
     "Wavelength to frequency (THz) conversion",
     "Reverse conversion from energy or wavenumber back to wavelength",
     "Reference table of common laser wavelengths",
-    "CSV export of conversion results"
+    "CSV export of conversion results",
+    "Absorption spectrum viewer with dual wavelength/energy axes, CSV upload, and PNG/CSV export"
   ]
 }
 </script>
@@ -103,7 +104,7 @@
 <header class="site-header">
   <div class="wrap">
     <h1>Laser Wavelength ↔ Energy Converter</h1>
-    <p class="tagline">Convert photon wavelength to energy (eV), wavenumber (cm⁻¹), and frequency (THz) — instantly, in your browser, no data sent anywhere.</p>
+    <p class="tagline">Convert wavelength to energy (eV), wavenumber (cm⁻¹) &amp; frequency (THz) — instantly, in your browser.</p>
   </div>
 </header>
 
@@ -148,6 +149,55 @@
 
   <!-- Reserved ad slot: future Google AdSense unit -->
   <div id="ad-slot" class="ad-slot" aria-hidden="true"></div>
+
+  <section id="spectra" aria-labelledby="spectra-heading">
+    <h2 id="spectra-heading">Absorption Spectrum Viewer</h2>
+    <p class="section-intro">Plot an absorption spectrum with wavelength and energy on paired axes, or upload your own two-column data and export it converted to any unit. Everything runs in your browser — nothing is uploaded to a server, no account needed.</p>
+
+    <div class="card spectra-card">
+      <div class="spectra-controls">
+        <div class="field">
+          <span>Load data</span>
+          <div class="spectra-load-row">
+            <button type="button" id="spectra-example-btn" class="btn btn-secondary">Example: fluorescein</button>
+            <label class="file-btn" for="spectra-file">
+              Upload CSV
+              <input type="file" id="spectra-file" accept=".csv,.tsv,.txt,text/csv" hidden>
+            </label>
+          </div>
+        </div>
+        <label class="field">
+          <span>Uploaded column 1 is</span>
+          <select id="spectra-col-unit">
+            <option value="nm">Wavelength (nm)</option>
+            <option value="eV">Energy (eV)</option>
+            <option value="cm-1">Wavenumber (cm⁻¹)</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>X-axis unit</span>
+          <select id="spectra-axis-unit">
+            <option value="nm">Wavelength (nm)</option>
+            <option value="eV">Energy (eV)</option>
+            <option value="cm-1">Wavenumber (cm⁻¹)</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="spectra-chart-wrap">
+        <canvas id="spectra-canvas"></canvas>
+        <div id="spectra-tooltip" class="spectra-tooltip"></div>
+      </div>
+
+      <p id="spectra-status" class="hint spectra-status" role="status"></p>
+
+      <div class="actions">
+        <button type="button" id="spectra-png-btn" class="btn btn-secondary">Download chart (PNG)</button>
+        <button type="button" id="spectra-csv-btn" class="btn btn-primary">Download data (CSV)</button>
+      </div>
+      <p class="hint">CSV format: two columns, no header needed — <code>wavelength,absorbance</code> (or energy/wavenumber instead of wavelength — set the unit above). The example spectrum is an illustrative curve for demonstration, not measured data.</p>
+    </div>
+  </section>
 
   <section id="reference-table" aria-labelledby="reference-heading">
     <h2 id="reference-heading">Common Laser Wavelength Reference Table</h2>

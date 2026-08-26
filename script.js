@@ -126,3 +126,374 @@
 
   setWavelength(632.8);
 })();
+
+(function () {
+  "use strict";
+
+  var HC_EV_NM = 1239.84198;
+
+  var canvas = document.getElementById("spectra-canvas");
+  if (!canvas) return;
+
+  var ctx = canvas.getContext("2d");
+  var tooltip = document.getElementById("spectra-tooltip");
+  var statusEl = document.getElementById("spectra-status");
+  var axisUnitSelect = document.getElementById("spectra-axis-unit");
+  var colUnitSelect = document.getElementById("spectra-col-unit");
+  var fileInput = document.getElementById("spectra-file");
+  var exampleBtn = document.getElementById("spectra-example-btn");
+  var pngBtn = document.getElementById("spectra-png-btn");
+  var csvBtn = document.getElementById("spectra-csv-btn");
+
+  var state = { xNm: [], y: [], label: "" };
+  var plotBox = null;
+  var padLeft = 58, padRight = 16, padTop = 42, padBottom = 46;
+
+  function convertFromNm(nm, unit) {
+    if (unit === "eV") return HC_EV_NM / nm;
+    if (unit === "cm-1") return 1e7 / nm;
+    return nm;
+  }
+
+  function convertToNm(v, unit) {
+    if (unit === "eV") return HC_EV_NM / v;
+    if (unit === "cm-1") return 1e7 / v;
+    return v;
+  }
+
+  function unitLabel(unit) {
+    if (unit === "eV") return "Energy (eV)";
+    if (unit === "cm-1") return "Wavenumber (cm⁻¹)";
+    return "Wavelength (nm)";
+  }
+
+  function formatVal(v, unit) {
+    if (unit === "eV") return v.toFixed(v < 10 ? 3 : 1);
+    if (unit === "cm-1") return v >= 1000 ? Math.round(v).toString() : v.toFixed(1);
+    return v >= 100 ? Math.round(v).toString() : v.toFixed(1);
+  }
+
+  function getPairUnit(unit) {
+    return unit === "eV" ? "nm" : "eV";
+  }
+
+  function niceNum(range, round) {
+    var exponent = Math.floor(Math.log10(range));
+    var fraction = range / Math.pow(10, exponent);
+    var niceFraction;
+    if (round) {
+      if (fraction < 1.5) niceFraction = 1;
+      else if (fraction < 3) niceFraction = 2;
+      else if (fraction < 7) niceFraction = 5;
+      else niceFraction = 10;
+    } else {
+      if (fraction <= 1) niceFraction = 1;
+      else if (fraction <= 2) niceFraction = 2;
+      else if (fraction <= 5) niceFraction = 5;
+      else niceFraction = 10;
+    }
+    return niceFraction * Math.pow(10, exponent);
+  }
+
+  function niceTicks(min, max, count) {
+    if (min === max) { min -= 1; max += 1; }
+    var range = niceNum(max - min, false);
+    var step = niceNum(range / (count - 1), true);
+    var niceMin = Math.floor(min / step) * step;
+    var niceMax = Math.ceil(max / step) * step;
+    var ticks = [];
+    for (var v = niceMin; v <= niceMax + step * 0.5; v += step) {
+      ticks.push(Math.round(v * 1e6) / 1e6);
+    }
+    return ticks;
+  }
+
+  function generateExampleSpectrum() {
+    var xNm = [], yRaw = [];
+    for (var nm = 380; nm <= 560; nm += 2) {
+      var main = Math.exp(-Math.pow(nm - 490, 2) / (2 * Math.pow(13, 2)));
+      var shoulder = 0.42 * Math.exp(-Math.pow(nm - 460, 2) / (2 * Math.pow(11, 2)));
+      xNm.push(nm);
+      yRaw.push(main + shoulder);
+    }
+    var max = Math.max.apply(null, yRaw);
+    var y = yRaw.map(function (v) { return Math.round((v / max) * 1000) / 1000; });
+    return { xNm: xNm, y: y, label: "fluorescein-example (illustrative)" };
+  }
+
+  function setStatus(msg, isError) {
+    statusEl.textContent = msg;
+    statusEl.classList.toggle("status-error", !!isError);
+  }
+
+  function layout() {
+    var rect = canvas.parentElement.getBoundingClientRect();
+    var cssWidth = Math.max(280, rect.width);
+    var cssHeight = 360;
+    var dpr = window.devicePixelRatio || 1;
+    canvas.width = cssWidth * dpr;
+    canvas.height = cssHeight * dpr;
+    canvas.style.width = cssWidth + "px";
+    canvas.style.height = cssHeight + "px";
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { width: cssWidth, height: cssHeight };
+  }
+
+  function draw() {
+    if (!state.xNm.length) return;
+    var dims = layout();
+    var width = dims.width, height = dims.height;
+    var bottomUnit = axisUnitSelect.value;
+    var topUnit = getPairUnit(bottomUnit);
+
+    ctx.clearRect(0, 0, width, height);
+
+    var rootStyles = getComputedStyle(document.documentElement);
+    var textColor = rootStyles.getPropertyValue("--text-dim").trim() || "#9aa3b5";
+    var strongText = rootStyles.getPropertyValue("--text").trim() || "#e6e9f0";
+    var lineColor = rootStyles.getPropertyValue("--accent").trim() || "#5eead4";
+    var gridColor = rootStyles.getPropertyValue("--border").trim() || "#232838";
+    var fontFamily = getComputedStyle(document.body).fontFamily;
+
+    var xVals = state.xNm.map(function (nm) { return convertFromNm(nm, bottomUnit); });
+    var xMin = Math.min.apply(null, xVals);
+    var xMax = Math.max.apply(null, xVals);
+    if (xMin === xMax) { xMin -= 1; xMax += 1; }
+    var yMax = Math.max.apply(null, state.y) * 1.12 || 1;
+    var yMin = 0;
+
+    var left = padLeft, right = width - padRight, top = padTop, bottom = height - padBottom;
+    var plotW = right - left, plotH = bottom - top;
+
+    function xPix(v) { return left + ((v - xMin) / (xMax - xMin)) * plotW; }
+    function yPix(v) { return bottom - ((v - yMin) / (yMax - yMin)) * plotH; }
+
+    plotBox = {
+      left: left, right: right, top: top, bottom: bottom,
+      xMin: xMin, xMax: xMax, yMin: yMin, yMax: yMax,
+      bottomUnit: bottomUnit, xPix: xPix, yPix: yPix
+    };
+
+    ctx.font = "11px " + fontFamily;
+
+    var yTicks = niceTicks(yMin, yMax, 5);
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    yTicks.forEach(function (t) {
+      if (t < yMin - 1e-9 || t > yMax + 1e-9) return;
+      var py = yPix(t);
+      ctx.beginPath();
+      ctx.moveTo(left, py);
+      ctx.lineTo(right, py);
+      ctx.strokeStyle = gridColor;
+      ctx.globalAlpha = 0.5;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = textColor;
+      ctx.fillText(t.toFixed(2), left - 8, py);
+    });
+
+    var xTicks = niceTicks(xMin, xMax, 6);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    xTicks.forEach(function (t) {
+      if (t < xMin - 1e-9 || t > xMax + 1e-9) return;
+      var px = xPix(t);
+      ctx.beginPath();
+      ctx.moveTo(px, top);
+      ctx.lineTo(px, bottom);
+      ctx.strokeStyle = gridColor;
+      ctx.globalAlpha = 0.15;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = textColor;
+      ctx.fillText(formatVal(t, bottomUnit), px, bottom + 8);
+    });
+
+    var nmAtXMin = convertToNm(xMin, bottomUnit);
+    var nmAtXMax = convertToNm(xMax, bottomUnit);
+    var topAtXMin = convertFromNm(nmAtXMin, topUnit);
+    var topAtXMax = convertFromNm(nmAtXMax, topUnit);
+    var topLo = Math.min(topAtXMin, topAtXMax);
+    var topHi = Math.max(topAtXMin, topAtXMax);
+    var topTicks = niceTicks(topLo, topHi, 5);
+    ctx.textBaseline = "bottom";
+    topTicks.forEach(function (tv) {
+      if (tv < topLo - 1e-9 || tv > topHi + 1e-9) return;
+      var nmEquiv = convertToNm(tv, topUnit);
+      var bottomEquiv = convertFromNm(nmEquiv, bottomUnit);
+      if (bottomEquiv < xMin - 1e-9 || bottomEquiv > xMax + 1e-9) return;
+      var px = xPix(bottomEquiv);
+      ctx.beginPath();
+      ctx.moveTo(px, top);
+      ctx.lineTo(px, top - 5);
+      ctx.strokeStyle = textColor;
+      ctx.globalAlpha = 0.6;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = textColor;
+      ctx.fillText(formatVal(tv, topUnit), px, top - 7);
+    });
+
+    ctx.strokeStyle = gridColor;
+    ctx.globalAlpha = 1;
+    ctx.beginPath();
+    ctx.moveTo(left, top);
+    ctx.lineTo(left, bottom);
+    ctx.lineTo(right, bottom);
+    ctx.stroke();
+
+    ctx.fillStyle = strongText;
+    ctx.font = "12px " + fontFamily;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText(unitLabel(bottomUnit), (left + right) / 2, height - 8);
+    ctx.fillText(unitLabel(topUnit), (left + right) / 2, 14);
+
+    ctx.save();
+    ctx.translate(14, (top + bottom) / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = "center";
+    ctx.fillText("Absorbance (a.u.)", 0, 0);
+    ctx.restore();
+
+    ctx.beginPath();
+    state.xNm.forEach(function (nm, i) {
+      var xv = convertFromNm(nm, bottomUnit);
+      var px = xPix(xv), py = yPix(state.y[i]);
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    });
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.lineTo(xPix(convertFromNm(state.xNm[state.xNm.length - 1], bottomUnit)), bottom);
+    ctx.lineTo(xPix(convertFromNm(state.xNm[0], bottomUnit)), bottom);
+    ctx.closePath();
+    ctx.fillStyle = lineColor;
+    ctx.globalAlpha = 0.08;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  function nearestIndex(nmTarget) {
+    var lo = 0, hi = state.xNm.length - 1;
+    while (lo < hi) {
+      var mid = (lo + hi) >> 1;
+      if (state.xNm[mid] < nmTarget) lo = mid + 1; else hi = mid;
+    }
+    if (lo > 0 && Math.abs(state.xNm[lo - 1] - nmTarget) < Math.abs(state.xNm[lo] - nmTarget)) return lo - 1;
+    return lo;
+  }
+
+  canvas.addEventListener("mousemove", function (e) {
+    if (!plotBox || !state.xNm.length) return;
+    var rect = canvas.getBoundingClientRect();
+    var mx = e.clientX - rect.left;
+    var my = e.clientY - rect.top;
+    if (mx < plotBox.left || mx > plotBox.right) { tooltip.style.display = "none"; return; }
+    var bottomVal = plotBox.xMin + ((mx - plotBox.left) / (plotBox.right - plotBox.left)) * (plotBox.xMax - plotBox.xMin);
+    var nmTarget = convertToNm(bottomVal, plotBox.bottomUnit);
+    var idx = nearestIndex(nmTarget);
+    var nm = state.xNm[idx], yVal = state.y[idx];
+    var ev = convertFromNm(nm, "eV"), cm1 = convertFromNm(nm, "cm-1");
+    tooltip.style.display = "block";
+    tooltip.style.left = plotBox.xPix(convertFromNm(nm, plotBox.bottomUnit)) + "px";
+    tooltip.style.top = Math.min(plotBox.yPix(yVal), my) + "px";
+    tooltip.innerHTML = formatVal(nm, "nm") + " nm &middot; " + formatVal(ev, "eV") + " eV &middot; " +
+      formatVal(cm1, "cm-1") + " cm⁻¹<br>Absorbance: " + yVal.toFixed(3);
+  });
+
+  canvas.addEventListener("mouseleave", function () {
+    tooltip.style.display = "none";
+  });
+
+  function parseCsvText(text) {
+    var lines = text.split(/\r\n|\n|\r/).map(function (l) { return l.trim(); }).filter(function (l) { return l.length > 0; });
+    var rows = [];
+    lines.forEach(function (line) {
+      var parts = line.split(/[,\t;]/).map(function (s) { return s.trim(); });
+      if (parts.length < 2) return;
+      var a = parseFloat(parts[0]), b = parseFloat(parts[1]);
+      if (isFinite(a) && isFinite(b)) rows.push([a, b]);
+    });
+    return rows;
+  }
+
+  function loadFromRows(rows, col1Unit, label) {
+    if (rows.length < 2) {
+      setStatus("Couldn't find at least 2 numeric rows. Expected two columns: value, absorbance.", true);
+      return false;
+    }
+    var pts = rows.map(function (r) { return [convertToNm(r[0], col1Unit), r[1]]; });
+    pts.sort(function (a, b) { return a[0] - b[0]; });
+    state.xNm = pts.map(function (p) { return p[0]; });
+    state.y = pts.map(function (p) { return p[1]; });
+    state.label = label;
+    setStatus("Loaded " + label + " (" + pts.length + " points).", false);
+    return true;
+  }
+
+  fileInput.addEventListener("change", function () {
+    var file = fileInput.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      var rows = parseCsvText(String(reader.result));
+      if (loadFromRows(rows, colUnitSelect.value, file.name)) draw();
+    };
+    reader.onerror = function () { setStatus("Could not read that file.", true); };
+    reader.readAsText(file);
+  });
+
+  exampleBtn.addEventListener("click", function () {
+    fileInput.value = "";
+    var ex = generateExampleSpectrum();
+    state.xNm = ex.xNm; state.y = ex.y; state.label = ex.label;
+    setStatus("Loaded " + ex.label + " (" + ex.xNm.length + " points). Approximate shape for demonstration — not measured data.", false);
+    draw();
+  });
+
+  axisUnitSelect.addEventListener("change", draw);
+
+  pngBtn.addEventListener("click", function () {
+    canvas.toBlob(function (blob) {
+      var url = URL.createObjectURL(blob);
+      var link = document.createElement("a");
+      link.href = url;
+      link.download = "absorption-spectrum.png";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    });
+  });
+
+  csvBtn.addEventListener("click", function () {
+    if (!state.xNm.length) return;
+    var unit = axisUnitSelect.value;
+    var rows = [[unitLabel(unit), "Absorbance"]];
+    state.xNm.forEach(function (nm, i) {
+      rows.push([convertFromNm(nm, unit).toFixed(unit === "nm" ? 2 : 4), state.y[i]]);
+    });
+    var csv = rows.map(function (r) { return r.join(","); }).join("\r\n");
+    var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement("a");
+    link.href = url;
+    link.download = "absorption-spectrum-" + unit.replace("-", "") + ".csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  });
+
+  window.addEventListener("resize", function () {
+    if (state.xNm.length) draw();
+  });
+
+  var initial = generateExampleSpectrum();
+  state.xNm = initial.xNm; state.y = initial.y; state.label = initial.label;
+  setStatus("Loaded " + initial.label + " (" + initial.xNm.length + " points). Approximate shape for demonstration — not measured data.", false);
+  draw();
+})();

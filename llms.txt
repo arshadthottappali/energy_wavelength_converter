@@ -28,6 +28,10 @@
 | Er:YAG | 2940 | 0.422 | 3401.4 | 102.0 |
 | CO2 | 10600 | 0.117 | 943.4 | 28.3 |
 
+## Absorption spectrum viewer
+
+The page also includes a client-side absorption spectrum plotter: paired wavelength/energy axes (selectable nm, eV, or cm⁻¹), an illustrative example spectrum (fluorescein), CSV upload of custom two-column data (wavelength/energy/wavenumber + absorbance), and PNG/CSV export in any unit. No account or upload to a server is required.
+
 ## Pages
 
-- [Converter and reference tables](https://energy-wavelength-converter.vercel.app/): interactive calculator, full laser reference table, and an educational guide explaining the wavelength-to-energy relationship and why energy scales nonlinearly with wavelength.
+- [Converter, spectrum viewer, and reference tables](https://energy-wavelength-converter.vercel.app/): interactive calculator, absorption spectrum plotter, full laser reference table, and an educational guide explaining the wavelength-to-energy relationship and why energy scales nonlinearly with wavelength.
