@@ -99,6 +99,17 @@ h3 {
   max-width: 72ch;
 }
 
+#spectra .section-intro {
+  max-width: none;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  #spectra .section-intro {
+    white-space: normal;
+  }
+}
+
 .card {
   background: var(--bg-elev);
   border: 1px solid var(--border);
