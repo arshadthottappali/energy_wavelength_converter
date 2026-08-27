@@ -410,11 +410,9 @@ td:first-child {
 
 .spectra-row-strip {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: flex-end;
   gap: 0.6rem;
-  overflow-x: auto;
-  padding-bottom: 4px;
 }
 
 .spectra-row-strip > * {
