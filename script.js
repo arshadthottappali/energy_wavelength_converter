@@ -830,13 +830,15 @@
       targetCtx.stroke();
       targetCtx.setLineDash([]);
 
-      targetCtx.lineTo(L.xPix(convertFromNm(d.xNm[d.xNm.length - 1], L.bottomUnit)), L.bottom);
-      targetCtx.lineTo(L.xPix(convertFromNm(d.xNm[0], L.bottomUnit)), L.bottom);
-      targetCtx.closePath();
-      targetCtx.fillStyle = d.color;
-      targetCtx.globalAlpha = 0.1;
-      targetCtx.fill();
-      targetCtx.globalAlpha = 1;
+      if (d.fillArea !== false) {
+        targetCtx.lineTo(L.xPix(convertFromNm(d.xNm[d.xNm.length - 1], L.bottomUnit)), L.bottom);
+        targetCtx.lineTo(L.xPix(convertFromNm(d.xNm[0], L.bottomUnit)), L.bottom);
+        targetCtx.closePath();
+        targetCtx.fillStyle = d.color;
+        targetCtx.globalAlpha = 0.1;
+        targetCtx.fill();
+        targetCtx.globalAlpha = 1;
+      }
     });
     targetCtx.restore();
 
@@ -956,7 +958,9 @@
         " " + L.xPix(convertFromNm(d.xNm[0], L.bottomUnit)) + "," + L.bottom;
       var dash = dashArrayFor(d.lineStyle);
       var dashAttr = dash.length ? ' stroke-dasharray="' + dash.join(",") + '"' : "";
-      parts.push('<polygon points="' + fillPts + '" fill="' + d.color + '" fill-opacity="0.1"/>');
+      if (d.fillArea !== false) {
+        parts.push('<polygon points="' + fillPts + '" fill="' + d.color + '" fill-opacity="0.1"/>');
+      }
       parts.push('<polyline points="' + linePts + '" fill="none" stroke="' + d.color + '" stroke-width="2.25"' + dashAttr + '/>');
     });
     parts.push('</g>');
@@ -1133,6 +1137,7 @@
       offset: 0,
       normalize: "none",
       lineStyle: "solid",
+      fillArea: true,
       visible: true,
       colUnit: "nm",
       source: null,
@@ -1174,7 +1179,7 @@
           : -1;
         return {
           label: d.label, color: d.color, colorAuto: d.colorAuto, paletteIndex: d.paletteIndex,
-          offset: d.offset, normalize: d.normalize, lineStyle: d.lineStyle, visible: d.visible,
+          offset: d.offset, normalize: d.normalize, lineStyle: d.lineStyle, fillArea: d.fillArea, visible: d.visible,
           colUnit: d.colUnit, source: d.source, xNm: d.xNm, y: d.y,
           selectedPeakIndices: d.selectedPeakIndices || [],
           subtractIndex: subtractIndex
@@ -1229,6 +1234,7 @@
       ds.offset = saved.offset || 0;
       ds.normalize = saved.normalize || "none";
       ds.lineStyle = saved.lineStyle || "solid";
+      ds.fillArea = saved.fillArea !== false;
       ds.visible = saved.visible !== false;
       ds.colUnit = saved.colUnit || "nm";
       ds.source = saved.source || null;
@@ -1240,6 +1246,7 @@
       row.querySelector('[data-role="offset"]').value = ds.offset;
       row.querySelector('[data-role="normalize"]').value = ds.normalize;
       row.querySelector('[data-role="line-style"]').value = ds.lineStyle;
+      row.querySelector('[data-role="fill-area"]').checked = ds.fillArea;
       row.querySelector('[data-role="visible"]').checked = ds.visible;
     });
 
@@ -1467,7 +1474,6 @@
 
     var colorInput = row.querySelector('[data-role="color"]');
     var legendInput = row.querySelector('[data-role="legend"]');
-    var exampleBtn = row.querySelector('[data-role="example-btn"]');
     var fileInput = row.querySelector('[data-role="file-input"]');
     var pasteToggleBtn = row.querySelector('[data-role="paste-toggle-btn"]');
     var pasteTextarea = row.querySelector('[data-role="paste-textarea"]');
@@ -1477,6 +1483,7 @@
     var subtractSelect = row.querySelector('[data-role="subtract"]');
     var normalizeSelect = row.querySelector('[data-role="normalize"]');
     var lineStyleSelect = row.querySelector('[data-role="line-style"]');
+    var fillAreaInput = row.querySelector('[data-role="fill-area"]');
     var visibleInput = row.querySelector('[data-role="visible"]');
     var findPeaksBtn = row.querySelector('[data-role="find-peaks-btn"]');
     var peaksPanel = row.querySelector('[data-role="peaks-panel"]');
@@ -1484,9 +1491,14 @@
     var peaksList = row.querySelector('[data-role="peaks-list"]');
     var downloadBtn = row.querySelector('[data-role="download-btn"]');
     var removeBtn = row.querySelector('[data-role="remove-btn"]');
+    var editDataBtn = row.querySelector('[data-role="edit-data-btn"]');
+    var editDataPanel = row.querySelector('[data-role="edit-data-panel"]');
+    var editDataTableWrap = row.querySelector('[data-role="edit-data-table-wrap"]');
+    var editDataAddBtn = row.querySelector('[data-role="edit-data-add-btn"]');
 
     colorInput.value = ds.color;
     lineStyleSelect.value = ds.lineStyle;
+    fillAreaInput.checked = ds.fillArea;
 
     function renderPeaksList() {
       var y = displayY(ds);
@@ -1543,24 +1555,6 @@
       draw();
     });
 
-    function applyLoadResult(result, defaultLabel) {
-      if (!result.ok) { setRowStatus(row, result.msg, true); return; }
-      if (!legendInput.value.trim()) legendInput.value = defaultLabel;
-      ds.label = legendInput.value;
-      setRowStatus(row, result.msg, false);
-      draw();
-    }
-
-    exampleBtn.addEventListener("click", function () {
-      fileInput.value = "";
-      var ex = generateExample();
-      ds.xNm = ex.xNm; ds.y = ex.y; ds.source = "example";
-      applyLoadResult({
-        ok: true,
-        msg: "Loaded " + ex.label + " (" + ex.xNm.length + " points). Approximate shape for demonstration — not measured data."
-      }, ex.label);
-    });
-
     fileInput.addEventListener("change", function () {
       var file = fileInput.files[0];
       if (!file) return;
@@ -1603,6 +1597,11 @@
       draw();
     });
 
+    fillAreaInput.addEventListener("change", function () {
+      ds.fillArea = fillAreaInput.checked;
+      draw();
+    });
+
     visibleInput.addEventListener("change", function () {
       ds.visible = visibleInput.checked;
       draw();
@@ -1618,6 +1617,92 @@
       var csv = rows.map(function (r) { return r.join(","); }).join("\r\n");
       var safeName = ((ds.label || "spectrum").trim() || "spectrum").replace(/[^a-z0-9-_]+/gi, "-").toLowerCase();
       downloadBlob(safeName + "-" + unit.replace("-", "") + ".csv", new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+    });
+
+    function renderEditDataTable() {
+      editDataTableWrap.innerHTML = "";
+      var unit = colUnitSelect.value;
+      var table = document.createElement("table");
+      var thead = document.createElement("thead");
+      var headRow = document.createElement("tr");
+      [unitLabel(unit), "Value", ""].forEach(function (text) {
+        var th = document.createElement("th");
+        th.textContent = text;
+        headRow.appendChild(th);
+      });
+      thead.appendChild(headRow);
+      table.appendChild(thead);
+
+      var tbody = document.createElement("tbody");
+      ds.xNm.forEach(function (nm, i) {
+        var tr = document.createElement("tr");
+
+        var xTd = document.createElement("td");
+        var xInput = document.createElement("input");
+        xInput.type = "number";
+        xInput.step = "any";
+        xInput.value = convertFromNm(nm, unit);
+        xInput.addEventListener("change", function () {
+          var v = parseFloat(xInput.value);
+          if (!isFinite(v)) return;
+          ds.xNm[i] = convertToNm(v, unit);
+          var pairs = ds.xNm.map(function (n, j) { return [n, ds.y[j]]; });
+          pairs.sort(function (a, b) { return a[0] - b[0]; });
+          ds.xNm = pairs.map(function (p) { return p[0]; });
+          ds.y = pairs.map(function (p) { return p[1]; });
+          renderEditDataTable();
+          draw();
+        });
+        xTd.appendChild(xInput);
+
+        var yTd = document.createElement("td");
+        var yInput = document.createElement("input");
+        yInput.type = "number";
+        yInput.step = "any";
+        yInput.value = ds.y[i];
+        yInput.addEventListener("change", function () {
+          var v = parseFloat(yInput.value);
+          if (!isFinite(v)) return;
+          ds.y[i] = v;
+          draw();
+        });
+        yTd.appendChild(yInput);
+
+        var rmTd = document.createElement("td");
+        var rmBtn = document.createElement("button");
+        rmBtn.type = "button";
+        rmBtn.className = "spectra-editdata-row-remove";
+        rmBtn.title = "Remove this point";
+        rmBtn.setAttribute("aria-label", "Remove this point");
+        rmBtn.textContent = "×";
+        rmBtn.addEventListener("click", function () {
+          ds.xNm.splice(i, 1);
+          ds.y.splice(i, 1);
+          renderEditDataTable();
+          draw();
+        });
+        rmTd.appendChild(rmBtn);
+
+        tr.appendChild(xTd);
+        tr.appendChild(yTd);
+        tr.appendChild(rmTd);
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      editDataTableWrap.appendChild(table);
+    }
+
+    editDataBtn.addEventListener("click", function () {
+      editDataPanel.hidden = !editDataPanel.hidden;
+      if (!editDataPanel.hidden) renderEditDataTable();
+    });
+
+    editDataAddBtn.addEventListener("click", function () {
+      var lastNm = ds.xNm.length ? ds.xNm[ds.xNm.length - 1] : convertToNm(0, colUnitSelect.value);
+      ds.xNm.push(lastNm);
+      ds.y.push(0);
+      renderEditDataTable();
+      draw();
     });
 
     removeBtn.addEventListener("click", function () {
@@ -1922,7 +2007,15 @@
 
   function loadDefaultDemoView() {
     var first = addDataset();
-    first.row.querySelector('[data-role="example-btn"]').click();
+    var ex = generateExample();
+    first.ds.xNm = ex.xNm;
+    first.ds.y = ex.y;
+    first.ds.source = "example";
+    var legendInput = first.row.querySelector('[data-role="legend"]');
+    legendInput.value = ex.label;
+    first.ds.label = ex.label;
+    setRowStatus(first.row, "Loaded " + ex.label + " (" + ex.xNm.length + " points). Approximate shape for demonstration — not measured data.", false);
+    draw();
   }
 
   function initFoldersAndDefaultView() {
