@@ -32,7 +32,7 @@
 <meta name="twitter:image" content="https://spectrawave.vercel.app/og-image.png">
 
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔬</text></svg>">
-<link rel="stylesheet" href="styles.css?v=20260826a">
+<link rel="stylesheet" href="styles.css?v=20260827a">
 
 <!-- JSON-LD: WebApplication -->
 <script type="application/ld+json">
@@ -280,25 +280,7 @@
     <p class="section-intro">Plot absorption or fluorescence spectra, overlay or offset them like a waterfall, and export publication-ready PNG, SVG, or CSV — runs in your browser, no account needed.</p>
 
     <div class="card spectra-card">
-      <div class="spectra-explorer-layout">
-        <aside class="spectra-folder-sidebar" aria-label="Molecule projects">
-          <div class="spectra-folder-toolbar">
-            <p class="chart-settings-group-label">Projects</p>
-            <button type="button" id="spectra-new-folder-btn" class="btn btn-secondary spectra-folder-btn-sm" title="Create a folder to organize spectra by molecule">+ Folder</button>
-          </div>
-          <input type="search" id="spectra-folder-search" class="spectra-folder-search" placeholder="Search folders…" hidden>
-          <div id="spectra-folder-tree" class="spectra-folder-tree"></div>
-          <div class="spectra-folder-io-actions">
-            <button type="button" id="spectra-export-all-btn" class="btn btn-secondary spectra-folder-btn-sm" title="Download every folder as one backup file">Export all</button>
-            <label class="file-btn spectra-folder-btn-sm" title="Restore folders from a backup file">
-              Import all
-              <input type="file" id="spectra-import-all-input" accept=".json,application/json" hidden>
-            </label>
-          </div>
-          <p id="spectra-folder-status" class="hint spectra-folder-status" role="status"></p>
-        </aside>
-
-        <div class="spectra-top-grid">
+      <div class="spectra-top-grid">
         <div class="spectra-chart-col">
           <div class="spectra-chart-wrap">
             <canvas id="spectra-canvas"></canvas>
@@ -366,6 +348,24 @@
           <button type="button" id="spectra-add-dataset-btn" class="btn btn-secondary spectra-add-btn">+ Add spectrum</button>
           <p class="hint">Each row loads one CSV or pasted block — but a file with wavelength in column 1 and several sample columns after it (e.g. multiple absorbance readings) automatically expands into one spectrum per column, each in its own row. Column headers, if present, become the legend labels. Every row also has its own CSV download (converted to the selected unit, offset excluded). The demo spectrum is an illustrative curve for demonstration, not measured data.</p>
         </div>
+
+        <div class="spectra-side-col">
+        <aside class="spectra-folder-sidebar" aria-label="Molecule projects">
+          <div class="spectra-folder-toolbar">
+            <p class="chart-settings-group-label">Projects</p>
+            <button type="button" id="spectra-new-folder-btn" class="btn btn-secondary spectra-folder-btn-sm" title="Create a folder to organize spectra by molecule">+ Folder</button>
+          </div>
+          <input type="search" id="spectra-folder-search" class="spectra-folder-search" placeholder="Search folders…" hidden>
+          <div id="spectra-folder-tree" class="spectra-folder-tree"></div>
+          <div class="spectra-folder-io-actions">
+            <button type="button" id="spectra-export-all-btn" class="btn btn-secondary spectra-folder-btn-sm" title="Download every folder as one backup file">Export all</button>
+            <label class="file-btn spectra-folder-btn-sm" title="Restore folders from a backup file">
+              Import all
+              <input type="file" id="spectra-import-all-input" accept=".json,application/json" hidden>
+            </label>
+          </div>
+          <p id="spectra-folder-status" class="hint spectra-folder-status" role="status"></p>
+        </aside>
 
         <details class="chart-settings" open>
           <summary>Customize chart (title, axes, background, frame)</summary>
