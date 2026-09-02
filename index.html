@@ -32,7 +32,7 @@
 <meta name="twitter:image" content="https://spectrawave.vercel.app/og-image.png">
 
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔬</text></svg>">
-<link rel="stylesheet" href="styles.css?v=20260828b">
+<link rel="stylesheet" href="styles.css?v=20260828c">
 
 <!-- Vercel Web Analytics -->
 <script defer src="https://cdn.vercel-insights.com/v1/script.js"></script>
@@ -495,9 +495,35 @@
 
         <p id="spectra-import-summary" class="hint"></p>
 
-        <div class="actions spectra-import-modal-actions">
+        <div class="actions spectra-modal-actions">
           <button type="button" id="spectra-import-cancel-btn" class="btn btn-secondary">Cancel</button>
           <button type="button" id="spectra-import-load-btn" class="btn btn-primary">Load</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="spectra-png-modal" class="spectra-modal-overlay" hidden>
+      <div class="spectra-modal spectra-png-modal" role="dialog" aria-modal="true" aria-labelledby="spectra-png-modal-title">
+        <div class="spectra-modal-header">
+          <h3 id="spectra-png-modal-title">Download chart (PNG)</h3>
+          <button type="button" id="spectra-png-modal-close" class="spectra-modal-close-btn" aria-label="Close">×</button>
+        </div>
+        <label class="field">
+          <span>Background</span>
+          <select id="spectra-png-bg-mode">
+            <option value="white">White</option>
+            <option value="transparent">No background (transparent)</option>
+            <option value="theme">Match page theme</option>
+            <option value="custom">Custom color…</option>
+          </select>
+        </label>
+        <label class="field" id="spectra-png-bg-custom-wrap" hidden>
+          <span>Custom background</span>
+          <input type="color" id="spectra-png-bg-custom" value="#ffffff">
+        </label>
+        <div class="actions spectra-modal-actions">
+          <button type="button" id="spectra-png-cancel-btn" class="btn btn-secondary">Cancel</button>
+          <button type="button" id="spectra-png-confirm-btn" class="btn btn-primary">Download</button>
         </div>
       </div>
     </div>
@@ -553,7 +579,7 @@
             <input type="checkbox" data-role="visible" checked> Visible
           </label>
           <label class="spectra-checkbox-field" title="Shade the area under the curve">
-            <input type="checkbox" data-role="fill-area" checked> Fill area
+            <input type="checkbox" data-role="fill-area"> Fill area
           </label>
           <button type="button" data-role="find-peaks-btn" class="btn btn-secondary" title="Detect local maxima and mark chosen ones on the chart">Find peaks</button>
           <button type="button" data-role="download-btn" class="btn btn-secondary">CSV</button>
@@ -757,6 +783,6 @@
   <button type="button" id="spectra-undo-btn" class="btn btn-secondary">Undo</button>
 </div>
 
-<script src="script.js?v=20260828c"></script>
+<script src="script.js?v=20260828d"></script>
 </body>
 </html>

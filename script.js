@@ -181,6 +181,14 @@
   var importCancelBtn = document.getElementById("spectra-import-cancel-btn");
   var importLoadBtn = document.getElementById("spectra-import-load-btn");
 
+  var pngModalOverlay = document.getElementById("spectra-png-modal");
+  var pngModalCloseBtn = document.getElementById("spectra-png-modal-close");
+  var pngBgModeSelect = document.getElementById("spectra-png-bg-mode");
+  var pngBgCustomWrap = document.getElementById("spectra-png-bg-custom-wrap");
+  var pngBgCustomInput = document.getElementById("spectra-png-bg-custom");
+  var pngCancelBtn = document.getElementById("spectra-png-cancel-btn");
+  var pngConfirmBtn = document.getElementById("spectra-png-confirm-btn");
+
   var titleInput = document.getElementById("spectra-title");
   var bgModeSelect = document.getElementById("spectra-bg-mode");
   var bgCustomWrap = document.getElementById("spectra-bg-custom-wrap");
@@ -1258,7 +1266,9 @@
     if (e.target === importModalOverlay) closeImportModal();
   });
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape" && !importModalOverlay.hidden) closeImportModal();
+    if (e.key !== "Escape") return;
+    if (!importModalOverlay.hidden) closeImportModal();
+    if (!pngModalOverlay.hidden) closePngModal();
   });
 
   function paletteColorFor(idx) {
@@ -1276,7 +1286,7 @@
       offset: 0,
       normalize: "none",
       lineStyle: "solid",
-      fillArea: true,
+      fillArea: false,
       visible: true,
       colUnit: "nm",
       source: null,
@@ -1910,9 +1920,43 @@
     draw();
   });
 
-  pngBtn.addEventListener("click", function () {
-    renderHighResPngBlob(function (blob) {
+  function renderHighResPngBlobWithBackground(bgMode, bgCustomColor, callback) {
+    var savedMode = custom.bgMode, savedColor = custom.bgCustomColor;
+    custom.bgMode = bgMode;
+    custom.bgCustomColor = bgCustomColor;
+    renderHighResPngBlob(callback);
+    custom.bgMode = savedMode;
+    custom.bgCustomColor = savedColor;
+  }
+
+  function openPngModal() {
+    pngBgModeSelect.value = "white";
+    pngBgCustomWrap.hidden = true;
+    pngBgCustomInput.value = "#ffffff";
+    pngModalOverlay.hidden = false;
+  }
+
+  function closePngModal() {
+    pngModalOverlay.hidden = true;
+  }
+
+  pngBgModeSelect.addEventListener("change", function () {
+    pngBgCustomWrap.hidden = pngBgModeSelect.value !== "custom";
+  });
+
+  pngBtn.addEventListener("click", openPngModal);
+  pngCancelBtn.addEventListener("click", closePngModal);
+  pngModalCloseBtn.addEventListener("click", closePngModal);
+  pngModalOverlay.addEventListener("click", function (e) {
+    if (e.target === pngModalOverlay) closePngModal();
+  });
+
+  pngConfirmBtn.addEventListener("click", function () {
+    var bgMode = pngBgModeSelect.value;
+    var bgCustomColor = pngBgCustomInput.value;
+    renderHighResPngBlobWithBackground(bgMode, bgCustomColor, function (blob) {
       downloadBlob("absorption-spectrum.png", blob);
+      closePngModal();
     });
   });
 

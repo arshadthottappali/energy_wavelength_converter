@@ -785,9 +785,21 @@ td:first-child {
   margin-top: 0.25rem;
 }
 
-.spectra-import-modal-actions {
+.spectra-modal-actions {
   justify-content: flex-end;
   margin-top: 1rem;
+}
+
+.spectra-png-modal {
+  max-width: 380px;
+}
+
+.spectra-png-modal .field {
+  margin-top: 0.9rem;
+}
+
+.spectra-png-modal .field:first-of-type {
+  margin-top: 0.5rem;
 }
 
 .spectra-row-status {
