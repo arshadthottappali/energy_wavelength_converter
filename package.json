@@ -1,0 +1,29 @@
+{
+  "name": "spectrawave",
+  "version": "1.0.0",
+  "description": "Free browser-based wavelength-to-energy converter and absorption/fluorescence spectrum plotter for researchers",
+  "main": "script.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/arshadthottappali/energy_wavelength_converter.git"
+  },
+  "keywords": [
+    "wavelength",
+    "energy",
+    "spectroscopy",
+    "spectrum",
+    "converter"
+  ],
+  "author": "SpectraWave",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/arshadthottappali/energy_wavelength_converter/issues"
+  },
+  "homepage": "https://github.com/arshadthottappali/energy_wavelength_converter#readme",
+  "dependencies": {
+    "@vercel/analytics": "^2.0.1"
+  }
+}
