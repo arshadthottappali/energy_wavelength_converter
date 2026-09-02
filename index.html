@@ -32,7 +32,7 @@
 <meta name="twitter:image" content="https://spectrawave.vercel.app/og-image.png">
 
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔬</text></svg>">
-<link rel="stylesheet" href="styles.css?v=20260828a">
+<link rel="stylesheet" href="styles.css?v=20260828b">
 
 <!-- Vercel Web Analytics -->
 <script defer src="https://cdn.vercel-insights.com/v1/script.js"></script>
@@ -453,6 +453,55 @@
       </div>
     </div>
 
+    <div id="spectra-import-modal" class="spectra-modal-overlay" hidden>
+      <div class="spectra-modal" role="dialog" aria-modal="true" aria-labelledby="spectra-import-modal-title">
+        <div class="spectra-modal-header">
+          <h3 id="spectra-import-modal-title">Preview &amp; configure import</h3>
+          <button type="button" id="spectra-import-modal-close" class="spectra-modal-close-btn" aria-label="Close">×</button>
+        </div>
+        <p id="spectra-import-modal-source" class="hint"></p>
+
+        <div class="spectra-import-preview-wrap">
+          <table class="spectra-import-preview-table">
+            <thead>
+              <tr><th></th><th>#</th><th>Raw line</th></tr>
+            </thead>
+            <tbody id="spectra-import-preview-body"></tbody>
+          </table>
+        </div>
+        <p id="spectra-import-preview-more" class="hint" hidden></p>
+
+        <div class="field-grid spectra-import-config-grid">
+          <label class="field" title="Which column holds the wavelength/energy/wavenumber values — defaults to the first column">
+            <span>X-axis column</span>
+            <select id="spectra-import-xcol"></select>
+          </label>
+          <label class="field" title="Sets the chart's Y-axis label and demo curve; applies to the whole chart, not just this import">
+            <span>Spectrum type</span>
+            <select id="spectra-import-mode">
+              <option value="absorption">Absorption</option>
+              <option value="fluorescence">Fluorescence (steady-state)</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>X-axis unit</span>
+            <select id="spectra-import-unit">
+              <option value="nm">Wavelength (nm)</option>
+              <option value="eV">Energy (eV)</option>
+              <option value="cm-1">Wavenumber (cm⁻¹)</option>
+            </select>
+          </label>
+        </div>
+
+        <p id="spectra-import-summary" class="hint"></p>
+
+        <div class="actions spectra-import-modal-actions">
+          <button type="button" id="spectra-import-cancel-btn" class="btn btn-secondary">Cancel</button>
+          <button type="button" id="spectra-import-load-btn" class="btn btn-primary">Load</button>
+        </div>
+      </div>
+    </div>
+
     <template id="spectra-dataset-row-template">
       <div class="spectra-dataset-row">
         <div class="spectra-row-strip">
@@ -464,10 +513,6 @@
           </label>
           <button type="button" data-role="paste-toggle-btn" class="btn btn-secondary">Paste data</button>
           <button type="button" data-role="edit-data-btn" class="btn btn-secondary" title="View, edit, or remove individual data points">Edit data</button>
-          <label class="field" title="Skip this many lines at the top of the file or pasted text before looking for data — use it if your instrument export starts with parameter/metadata rows">
-            <span>Skip rows</span>
-            <input type="number" data-role="skip-rows" value="0" min="0" step="1">
-          </label>
           <label class="field">
             <span>Column 1 is</span>
             <select data-role="col-unit">
@@ -712,6 +757,6 @@
   <button type="button" id="spectra-undo-btn" class="btn btn-secondary">Undo</button>
 </div>
 
-<script src="script.js?v=20260828b"></script>
+<script src="script.js?v=20260828c"></script>
 </body>
 </html>

@@ -169,6 +169,18 @@
   var exportAllBtn = document.getElementById("spectra-export-all-btn");
   var importAllInput = document.getElementById("spectra-import-all-input");
 
+  var importModalOverlay = document.getElementById("spectra-import-modal");
+  var importModalCloseBtn = document.getElementById("spectra-import-modal-close");
+  var importModalSourceEl = document.getElementById("spectra-import-modal-source");
+  var importPreviewBody = document.getElementById("spectra-import-preview-body");
+  var importPreviewMoreEl = document.getElementById("spectra-import-preview-more");
+  var importXColSelect = document.getElementById("spectra-import-xcol");
+  var importModeSelect = document.getElementById("spectra-import-mode");
+  var importUnitSelect = document.getElementById("spectra-import-unit");
+  var importSummaryEl = document.getElementById("spectra-import-summary");
+  var importCancelBtn = document.getElementById("spectra-import-cancel-btn");
+  var importLoadBtn = document.getElementById("spectra-import-load-btn");
+
   var titleInput = document.getElementById("spectra-title");
   var bgModeSelect = document.getElementById("spectra-bg-mode");
   var bgCustomWrap = document.getElementById("spectra-bg-custom-wrap");
@@ -1028,103 +1040,226 @@
     return cells.length >= 2 && cells.every(function (c) { return c !== "" && isFinite(parseFloat(c)); });
   }
 
-  function parseCsvWide(text, skipRows) {
-    var rawLines = text.split(/\r\n|\n|\r/);
-    if (skipRows > 0) rawLines = rawLines.slice(skipRows);
-    var lines = rawLines.map(function (l) { return l.trim(); }).filter(function (l) { return l.length > 0; });
-    var splitLine = function (line) { return line.split(/[,\t;]/).map(function (s) { return s.trim(); }); };
-    if (!lines.length) return { headers: null, rows: [] };
-
-    var firstCells = splitLine(lines[0]);
-    var headers = null;
-    var startIdx = 0;
-    if (!isNumericRow(firstCells)) {
-      headers = firstCells;
-      startIdx = 1;
-    }
-
-    var rows = [];
-    var numCols = null;
-    for (var i = startIdx; i < lines.length; i++) {
-      var cells = splitLine(lines[i]);
-      if (!isNumericRow(cells)) continue;
-      if (numCols === null) numCols = cells.length;
-      if (cells.length !== numCols) continue;
-      rows.push(cells.map(function (c) { return parseFloat(c); }));
-    }
-
-    return { headers: headers, rows: rows };
+  function splitDelimited(line) {
+    return line.split(/[,\t;]/).map(function (s) { return s.trim(); });
   }
 
-  function loadWideIntoDatasets(ds, row, parsed, col1Unit, sourceLabel, source) {
-    var rows = parsed.rows;
-    if (rows.length < 2 || rows[0].length < 2) {
-      return {
-        ok: false,
-        msg: "Couldn't find at least 2 numeric columns. Expected wavelength (or energy/wavenumber) in column 1, then one or more sample columns."
-      };
-    }
-    var numCols = rows[0].length;
-    rows = rows.slice().sort(function (a, b) { return a[0] - b[0]; });
-    var xNm = rows.map(function (r) { return convertToNm(r[0], col1Unit); });
-    var labels = [];
-    var touchedIds = [];
-
-    for (var col = 1; col < numCols; col++) {
-      var y = rows.map(function (r) { return r[col]; });
-      var headerName = parsed.headers && parsed.headers[col] ? parsed.headers[col] : null;
-      var label = headerName || (numCols > 2 ? "Sample " + col : sourceLabel);
-      labels.push(label);
-
-      var targetDs, targetRow;
-      if (col === 1) {
-        targetDs = ds; targetRow = row;
-      } else {
-        var added = addDataset();
-        targetDs = added.ds; targetRow = added.row;
-      }
-      targetDs.xNm = xNm.slice();
-      targetDs.y = y;
-      targetDs.colUnit = col1Unit;
-      targetDs.source = source;
-      touchedIds.push(targetDs.id);
-      var legendEl = targetRow.querySelector('[data-role="legend"]');
-      if (!legendEl.value.trim()) legendEl.value = label;
-      targetDs.label = legendEl.value;
-    }
-
-    removeStaleExampleRows(touchedIds);
-
-    var msg = numCols > 2
-      ? "Loaded " + (numCols - 1) + " spectra from " + sourceLabel + " (" + labels.join(", ") + "), " + rows.length + " points each."
-      : "Loaded " + sourceLabel + " (" + rows.length + " points).";
-    return { ok: true, msg: msg };
-  }
-
-  function guessColumnUnit(rows) {
-    var col1 = rows.map(function (r) { return r[0]; }).filter(function (v) { return isFinite(v); });
-    if (!col1.length) return "nm";
-    var max = Math.max.apply(null, col1);
-    var min = Math.min.apply(null, col1);
+  function guessColumnUnit(values) {
+    var vals = values.filter(function (v) { return isFinite(v); });
+    if (!vals.length) return "nm";
+    var max = Math.max.apply(null, vals);
+    var min = Math.min.apply(null, vals);
     if (max <= 50) return "eV";
     if (min >= 2000) return "cm-1";
     return "nm";
   }
 
-  function loadFileIntoRow(file, ds, row, colUnitSelect) {
+  var IMPORT_PREVIEW_CAP = 60;
+  var pendingImport = null; // { lines, cells, included, headers, target, sourceLabel, source, unitTouched }
+
+  function loadFileIntoRow(file, existingTarget) {
     var reader = new FileReader();
     reader.onload = function () {
-      var skipRowsInput = row.querySelector('[data-role="skip-rows"]');
-      var skipRows = skipRowsInput ? parseInt(skipRowsInput.value, 10) || 0 : 0;
-      var parsed = parseCsvWide(String(reader.result), skipRows);
-      if (parsed.rows.length) colUnitSelect.value = guessColumnUnit(parsed.rows);
-      var result = loadWideIntoDatasets(ds, row, parsed, colUnitSelect.value, file.name, "file");
-      setRowStatus(row, result.msg, !result.ok);
-      if (result.ok) draw();
+      openImportModal(String(reader.result), file.name, "file", existingTarget);
     };
-    reader.onerror = function () { setRowStatus(row, "Could not read that file.", true); };
+    reader.onerror = function () {
+      if (existingTarget) setRowStatus(existingTarget.row, "Could not read that file.", true);
+      else setStatus("Could not read that file.", true);
+    };
     reader.readAsText(file);
   }
+
+  function openImportModal(text, sourceLabel, source, existingTarget) {
+    var lines = text.split(/\r\n|\n|\r/).map(function (l) { return l.trim(); }).filter(function (l) { return l.length > 0; });
+    var cells = lines.map(splitDelimited);
+    var included = cells.map(isNumericRow);
+
+    pendingImport = {
+      lines: lines, cells: cells, included: included, headers: null,
+      target: existingTarget || null, sourceLabel: sourceLabel, source: source,
+      unitTouched: false
+    };
+
+    importModalSourceEl.textContent = "Source: " + sourceLabel + " — uncheck any rows that aren't part of the data table.";
+    importModeSelect.value = spectrumMode;
+    renderImportPreview();
+    recomputeImportConfig();
+    importModalOverlay.hidden = false;
+  }
+
+  function closeImportModal() {
+    importModalOverlay.hidden = true;
+    pendingImport = null;
+  }
+
+  function renderImportPreview() {
+    var p = pendingImport;
+    importPreviewBody.innerHTML = "";
+    var shown = Math.min(p.lines.length, IMPORT_PREVIEW_CAP);
+    for (var i = 0; i < shown; i++) {
+      (function (i) {
+        var tr = document.createElement("tr");
+        tr.className = "spectra-import-preview-row" + (p.included[i] ? "" : " excluded");
+
+        var cbTd = document.createElement("td");
+        var cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = p.included[i];
+        cb.addEventListener("change", function () {
+          p.included[i] = cb.checked;
+          tr.className = "spectra-import-preview-row" + (cb.checked ? "" : " excluded");
+          recomputeImportConfig();
+        });
+        cbTd.appendChild(cb);
+
+        var numTd = document.createElement("td");
+        numTd.textContent = String(i + 1);
+
+        var textTd = document.createElement("td");
+        textTd.textContent = p.lines[i];
+
+        tr.appendChild(cbTd);
+        tr.appendChild(numTd);
+        tr.appendChild(textTd);
+        importPreviewBody.appendChild(tr);
+      })(i);
+    }
+    if (p.lines.length > shown) {
+      importPreviewMoreEl.hidden = false;
+      importPreviewMoreEl.textContent = "+ " + (p.lines.length - shown) + " more line(s) below — numeric rows among them are included automatically.";
+    } else {
+      importPreviewMoreEl.hidden = true;
+    }
+  }
+
+  function includedNumericRows(p) {
+    var numCols = null;
+    var rows = [];
+    var firstDataIdx = -1;
+    for (var i = 0; i < p.lines.length; i++) {
+      if (!p.included[i]) continue;
+      var c = p.cells[i];
+      if (!isNumericRow(c)) continue;
+      if (numCols === null) { numCols = c.length; firstDataIdx = i; }
+      if (c.length !== numCols) continue;
+      rows.push(c.map(function (v) { return parseFloat(v); }));
+    }
+    var headers = null;
+    if (firstDataIdx > 0 && numCols) {
+      var candidate = p.cells[firstDataIdx - 1];
+      if (!isNumericRow(candidate) && candidate.length === numCols) headers = candidate;
+    }
+    return { numCols: numCols || 0, rows: rows, headers: headers };
+  }
+
+  function recomputeImportConfig() {
+    var p = pendingImport;
+    var found = includedNumericRows(p);
+    p.headers = found.headers;
+    var prevXCol = importXColSelect.value !== "" ? parseInt(importXColSelect.value, 10) : 0;
+
+    importXColSelect.innerHTML = "";
+    for (var c = 0; c < found.numCols; c++) {
+      var opt = document.createElement("option");
+      opt.value = String(c);
+      var headerName = p.headers && p.headers[c] ? p.headers[c] : null;
+      opt.textContent = "Column " + (c + 1) + (headerName ? " — " + headerName : "");
+      importXColSelect.appendChild(opt);
+    }
+    var xCol = (found.numCols && prevXCol < found.numCols) ? prevXCol : 0;
+    importXColSelect.value = String(xCol);
+
+    if (!p.unitTouched) {
+      var xVals = found.rows.map(function (r) { return r[xCol]; });
+      importUnitSelect.value = guessColumnUnit(xVals);
+    }
+
+    var yCols = Math.max(found.numCols - 1, 0);
+    importSummaryEl.textContent = found.rows.length
+      ? "Detected " + found.rows.length + " data point(s), " + yCols + " sample column" + (yCols === 1 ? "" : "s") + "."
+      : "No numeric data rows detected yet — check the rows that contain your data.";
+    importLoadBtn.disabled = !found.rows.length || found.numCols < 2;
+  }
+
+  importXColSelect.addEventListener("change", function () { recomputeImportConfig(); });
+  importUnitSelect.addEventListener("change", function () { if (pendingImport) pendingImport.unitTouched = true; });
+
+  function commitImport() {
+    var p = pendingImport;
+    var found = includedNumericRows(p);
+    if (!found.rows.length || found.numCols < 2) return;
+
+    var xCol = parseInt(importXColSelect.value, 10) || 0;
+    var unit = importUnitSelect.value;
+    var mode = importModeSelect.value;
+    if (mode !== spectrumMode) {
+      spectrumMode = mode;
+      modeSelect.value = mode;
+    }
+
+    var rows = found.rows.slice().sort(function (a, b) { return a[xCol] - b[xCol]; });
+    var xNm = rows.map(function (r) { return convertToNm(r[xCol], unit); });
+    var yCols = [];
+    for (var c = 0; c < found.numCols; c++) { if (c !== xCol) yCols.push(c); }
+
+    var touchedIds = [];
+    var labels = [];
+    var firstRow = null;
+
+    yCols.forEach(function (col, idx) {
+      var y = rows.map(function (r) { return r[col]; });
+      var headerName = p.headers && p.headers[col] ? p.headers[col] : null;
+      var label = headerName || (yCols.length > 1 ? "Sample " + (idx + 1) : p.sourceLabel);
+      labels.push(label);
+
+      var targetDs, targetRow;
+      if (idx === 0 && p.target) {
+        targetDs = p.target.ds; targetRow = p.target.row;
+      } else if (idx === 0 && !p.target) {
+        var emptyDs = findEmptyDataset();
+        if (emptyDs) {
+          targetDs = emptyDs; targetRow = datasetsContainer.querySelector('[data-ds-id="' + emptyDs.id + '"]');
+        } else {
+          var added = addDataset();
+          targetDs = added.ds; targetRow = added.row;
+        }
+      } else {
+        var addedNext = addDataset();
+        targetDs = addedNext.ds; targetRow = addedNext.row;
+      }
+
+      if (!firstRow) firstRow = targetRow;
+      targetDs.xNm = xNm.slice();
+      targetDs.y = y;
+      targetDs.colUnit = unit;
+      targetDs.source = p.source;
+      touchedIds.push(targetDs.id);
+      targetRow.querySelector('[data-role="col-unit"]').value = unit;
+      var legendEl = targetRow.querySelector('[data-role="legend"]');
+      if (!legendEl.value.trim()) legendEl.value = label;
+      targetDs.label = legendEl.value;
+    });
+
+    removeStaleExampleRows(touchedIds);
+
+    var msg = yCols.length > 1
+      ? "Loaded " + yCols.length + " spectra from " + p.sourceLabel + " (" + labels.join(", ") + "), " + rows.length + " points each."
+      : "Loaded " + p.sourceLabel + " (" + rows.length + " points).";
+    setRowStatus(firstRow, msg, false);
+
+    closeImportModal();
+    draw();
+  }
+
+  importLoadBtn.addEventListener("click", commitImport);
+  importCancelBtn.addEventListener("click", closeImportModal);
+  importModalCloseBtn.addEventListener("click", closeImportModal);
+  importModalOverlay.addEventListener("click", function (e) {
+    if (e.target === importModalOverlay) closeImportModal();
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !importModalOverlay.hidden) closeImportModal();
+  });
 
   function paletteColorFor(idx) {
     return OKABE_ITO[idx % OKABE_ITO.length];
@@ -1482,7 +1617,6 @@
     var pasteToggleBtn = row.querySelector('[data-role="paste-toggle-btn"]');
     var pasteTextarea = row.querySelector('[data-role="paste-textarea"]');
     var pasteLoadBtn = row.querySelector('[data-role="paste-load-btn"]');
-    var skipRowsInput = row.querySelector('[data-role="skip-rows"]');
     var colUnitSelect = row.querySelector('[data-role="col-unit"]');
     var offsetInput = row.querySelector('[data-role="offset"]');
     var subtractSelect = row.querySelector('[data-role="subtract"]');
@@ -1563,7 +1697,8 @@
     fileInput.addEventListener("change", function () {
       var file = fileInput.files[0];
       if (!file) return;
-      loadFileIntoRow(file, ds, row, colUnitSelect);
+      loadFileIntoRow(file, { ds: ds, row: row });
+      fileInput.value = "";
     });
 
     pasteToggleBtn.addEventListener("click", function () {
@@ -1574,12 +1709,8 @@
     });
 
     pasteLoadBtn.addEventListener("click", function () {
-      var skipRows = parseInt(skipRowsInput.value, 10) || 0;
-      var parsed = parseCsvWide(pasteTextarea.value, skipRows);
-      if (parsed.rows.length) colUnitSelect.value = guessColumnUnit(parsed.rows);
-      var result = loadWideIntoDatasets(ds, row, parsed, colUnitSelect.value, "pasted data", "paste");
-      setRowStatus(row, result.msg, !result.ok);
-      if (result.ok) draw();
+      if (!pasteTextarea.value.trim()) { setRowStatus(row, "Paste some data first.", true); return; }
+      openImportModal(pasteTextarea.value, "pasted data", "paste", { ds: ds, row: row });
     });
 
     offsetInput.addEventListener("input", function () {
@@ -1878,15 +2009,7 @@
   globalUploadInput.addEventListener("change", function () {
     var file = globalUploadInput.files[0];
     if (!file) return;
-    var emptyDs = findEmptyDataset();
-    var target;
-    if (emptyDs) {
-      target = { ds: emptyDs, row: datasetsContainer.querySelector('[data-ds-id="' + emptyDs.id + '"]') };
-    } else {
-      target = addDataset();
-    }
-    var colUnitSelect = target.row.querySelector('[data-role="col-unit"]');
-    loadFileIntoRow(file, target.ds, target.row, colUnitSelect);
+    loadFileIntoRow(file, null);
     globalUploadInput.value = "";
   });
 
