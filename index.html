@@ -32,7 +32,7 @@
 <meta name="twitter:image" content="https://spectrawave.vercel.app/og-image.png">
 
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔬</text></svg>">
-<link rel="stylesheet" href="styles.css?v=20260827b">
+<link rel="stylesheet" href="styles.css?v=20260828a">
 
 <!-- JSON-LD: WebApplication -->
 <script type="application/ld+json">
@@ -233,47 +233,17 @@
   </div>
 </header>
 
+<nav class="site-nav" aria-label="Page sections">
+  <div class="wrap site-nav-inner">
+    <a href="#spectra" class="site-nav-link">Spectrum Viewer</a>
+    <a href="#converter" class="site-nav-link">Calculator</a>
+    <a href="#reference-table" class="site-nav-link">Reference Table</a>
+    <a href="#guide" class="site-nav-link">Guide</a>
+    <a href="#faq" class="site-nav-link">FAQ</a>
+  </div>
+</nav>
+
 <main class="wrap">
-
-  <section id="converter" aria-labelledby="converter-heading">
-    <h2 id="converter-heading">Wavelength / Energy Calculator</h2>
-    <div class="card converter-card">
-      <div class="field-grid">
-        <label class="field">
-          <span>Wavelength (nm)</span>
-          <input type="number" id="input-nm" inputmode="decimal" placeholder="e.g. 632.8" step="any">
-        </label>
-        <label class="field">
-          <span>Energy (eV)</span>
-          <input type="number" id="input-ev" inputmode="decimal" placeholder="e.g. 1.959" step="any">
-        </label>
-        <label class="field">
-          <span>Wavenumber (cm⁻¹)</span>
-          <input type="number" id="input-cm1" inputmode="decimal" placeholder="e.g. 15803" step="any">
-        </label>
-        <label class="field">
-          <span>Frequency (THz)</span>
-          <input type="number" id="input-thz" inputmode="decimal" placeholder="e.g. 473.76" step="any">
-        </label>
-        <label class="field">
-          <span>Energy (Joules)</span>
-          <input type="text" id="input-j" readonly placeholder="calculated">
-        </label>
-        <label class="field">
-          <span>Wavelength (µm)</span>
-          <input type="text" id="input-um" readonly placeholder="calculated">
-        </label>
-      </div>
-      <div class="actions">
-        <button type="button" id="clear-btn" class="btn btn-secondary">Clear</button>
-        <button type="button" id="export-btn" class="btn btn-primary">Export result (CSV)</button>
-      </div>
-      <p class="hint">Type a value into any field — the other four update automatically. Formulas: E(eV) = 1239.84198 / λ(nm) &nbsp;·&nbsp; ν̃(cm⁻¹) = 1e7 / λ(nm) &nbsp;·&nbsp; f(THz) = 299792.458 / λ(nm)</p>
-    </div>
-  </section>
-
-  <!-- Reserved ad slot: future Google AdSense unit -->
-  <div id="ad-slot" class="ad-slot" aria-hidden="true"></div>
 
   <section id="spectra" aria-labelledby="spectra-heading">
     <h2 id="spectra-heading">Spectrum Viewer</h2>
@@ -555,6 +525,46 @@
     </template>
   </section>
 
+  <!-- Reserved ad slot: future Google AdSense unit -->
+  <div id="ad-slot" class="ad-slot" aria-hidden="true"></div>
+
+  <section id="converter" aria-labelledby="converter-heading">
+    <h2 id="converter-heading">Wavelength / Energy Calculator</h2>
+    <div class="card converter-card">
+      <div class="field-grid">
+        <label class="field">
+          <span>Wavelength (nm)</span>
+          <input type="number" id="input-nm" inputmode="decimal" placeholder="e.g. 632.8" step="any">
+        </label>
+        <label class="field">
+          <span>Energy (eV)</span>
+          <input type="number" id="input-ev" inputmode="decimal" placeholder="e.g. 1.959" step="any">
+        </label>
+        <label class="field">
+          <span>Wavenumber (cm⁻¹)</span>
+          <input type="number" id="input-cm1" inputmode="decimal" placeholder="e.g. 15803" step="any">
+        </label>
+        <label class="field">
+          <span>Frequency (THz)</span>
+          <input type="number" id="input-thz" inputmode="decimal" placeholder="e.g. 473.76" step="any">
+        </label>
+        <label class="field">
+          <span>Energy (Joules)</span>
+          <input type="text" id="input-j" readonly placeholder="calculated">
+        </label>
+        <label class="field">
+          <span>Wavelength (µm)</span>
+          <input type="text" id="input-um" readonly placeholder="calculated">
+        </label>
+      </div>
+      <div class="actions">
+        <button type="button" id="clear-btn" class="btn btn-secondary">Clear</button>
+        <button type="button" id="export-btn" class="btn btn-primary">Export result (CSV)</button>
+      </div>
+      <p class="hint">Type a value into any field — the other four update automatically. Formulas: E(eV) = 1239.84198 / λ(nm) &nbsp;·&nbsp; ν̃(cm⁻¹) = 1e7 / λ(nm) &nbsp;·&nbsp; f(THz) = 299792.458 / λ(nm)</p>
+    </div>
+  </section>
+
   <section id="reference-table" aria-labelledby="reference-heading">
     <h2 id="reference-heading">Common Laser Wavelength Reference Table</h2>
     <p class="section-intro">Pre-calculated energy, wavenumber, and frequency values for widely used laser sources — useful for spectroscopy, photolithography, and optics reference without running the calculator.</p>
@@ -695,6 +705,6 @@
   <button type="button" id="spectra-undo-btn" class="btn btn-secondary">Undo</button>
 </div>
 
-<script src="script.js?v=20260827a"></script>
+<script src="script.js?v=20260828a"></script>
 </body>
 </html>
