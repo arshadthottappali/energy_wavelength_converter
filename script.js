@@ -1044,12 +1044,13 @@
     tooltip.style.display = "none";
   });
 
-  function isNumericRow(cells) {
-    return cells.length >= 2 && cells.every(function (c) { return c !== "" && isFinite(parseFloat(c)); });
-  }
-
   function splitDelimited(line) {
-    return line.split(/[,\t;]/).map(function (s) { return s.trim(); });
+    var cells = line.split(/[,\t;]/).map(function (s) { return s.trim(); });
+    // a single trailing delimiter (common row-terminator convention in instrument exports)
+    // produces one bogus empty cell at the end -- drop it so a genuinely blank last
+    // real column (represented by a lone space, not an empty string) isn't lost too.
+    if (cells.length > 1 && cells[cells.length - 1] === "") cells.pop();
+    return cells;
   }
 
   function guessColumnUnit(values) {
@@ -1077,10 +1078,15 @@
     reader.readAsText(file);
   }
 
+  function looksLikeDataRow(cells, checkCol) {
+    var idx = (checkCol != null && checkCol < cells.length) ? checkCol : 0;
+    return cells.length >= 2 && isFinite(parseFloat(cells[idx]));
+  }
+
   function openImportModal(text, sourceLabel, source, existingTarget) {
-    var lines = text.split(/\r\n|\n|\r/).map(function (l) { return l.trim(); }).filter(function (l) { return l.length > 0; });
+    var lines = text.split(/\r\n|\n|\r/).filter(function (l) { return l.trim().length > 0; });
     var cells = lines.map(splitDelimited);
-    var included = cells.map(isNumericRow);
+    var included = cells.map(function (c) { return looksLikeDataRow(c, 0); });
 
     pendingImport = {
       lines: lines, cells: cells, included: included, headers: null,
@@ -1140,31 +1146,39 @@
     }
   }
 
-  function includedNumericRows(p) {
+  function includedDataRows(p, xColHint) {
     var numCols = null;
-    var rows = [];
-    var firstDataIdx = -1;
+    var rows = []; // each cell is a number, or null when blank/missing for that column at that row
     for (var i = 0; i < p.lines.length; i++) {
       if (!p.included[i]) continue;
       var c = p.cells[i];
-      if (!isNumericRow(c)) continue;
-      if (numCols === null) { numCols = c.length; firstDataIdx = i; }
+      if (!looksLikeDataRow(c, xColHint)) continue;
+      if (numCols === null) numCols = c.length;
       if (c.length !== numCols) continue;
-      rows.push(c.map(function (v) { return parseFloat(v); }));
+      rows.push(c.map(function (v) {
+        var n = parseFloat(v);
+        return isFinite(n) ? n : null;
+      }));
     }
+
     var headers = null;
-    if (firstDataIdx > 0 && numCols) {
-      var candidate = p.cells[firstDataIdx - 1];
-      if (!isNumericRow(candidate) && candidate.length === numCols) headers = candidate;
+    if (numCols) {
+      for (var j = 0; j < p.cells.length; j++) {
+        var cand = p.cells[j];
+        if (cand.length !== numCols) continue;
+        var allText = cand.every(function (v) { return !isFinite(parseFloat(v)); });
+        if (allText) { headers = cand; break; }
+      }
     }
+
     return { numCols: numCols || 0, rows: rows, headers: headers };
   }
 
   function recomputeImportConfig() {
     var p = pendingImport;
-    var found = includedNumericRows(p);
-    p.headers = found.headers;
     var prevXCol = importXColSelect.value !== "" ? parseInt(importXColSelect.value, 10) : 0;
+    var found = includedDataRows(p, prevXCol);
+    p.headers = found.headers;
 
     importXColSelect.innerHTML = "";
     for (var c = 0; c < found.numCols; c++) {
@@ -1178,15 +1192,21 @@
     importXColSelect.value = String(xCol);
 
     if (!p.unitTouched) {
-      var xVals = found.rows.map(function (r) { return r[xCol]; });
+      var xVals = found.rows.map(function (r) { return r[xCol]; }).filter(function (v) { return v != null; });
       importUnitSelect.value = guessColumnUnit(xVals);
     }
 
-    var yCols = Math.max(found.numCols - 1, 0);
+    var yColCount = 0, maxPoints = 0;
+    for (var yc = 0; yc < found.numCols; yc++) {
+      if (yc === xCol) continue;
+      yColCount++;
+      var pts = found.rows.filter(function (r) { return r[xCol] != null && r[yc] != null; }).length;
+      if (pts > maxPoints) maxPoints = pts;
+    }
     importSummaryEl.textContent = found.rows.length
-      ? "Detected " + found.rows.length + " data point(s), " + yCols + " sample column" + (yCols === 1 ? "" : "s") + "."
-      : "No numeric data rows detected yet — check the rows that contain your data.";
-    importLoadBtn.disabled = !found.rows.length || found.numCols < 2;
+      ? "Detected up to " + maxPoints + " data point(s) per trace, " + yColCount + " sample column" + (yColCount === 1 ? "" : "s") + (yColCount > 1 ? " (columns may cover different ranges if some rows are blank)." : ".")
+      : "No numeric data rows detected yet — check the rows that contain your data, and confirm the X-axis column.";
+    importLoadBtn.disabled = !found.rows.length || found.numCols < 2 || maxPoints === 0;
   }
 
   importXColSelect.addEventListener("change", function () { recomputeImportConfig(); });
@@ -1194,10 +1214,10 @@
 
   function commitImport() {
     var p = pendingImport;
-    var found = includedNumericRows(p);
+    var xCol = parseInt(importXColSelect.value, 10) || 0;
+    var found = includedDataRows(p, xCol);
     if (!found.rows.length || found.numCols < 2) return;
 
-    var xCol = parseInt(importXColSelect.value, 10) || 0;
     var unit = importUnitSelect.value;
     var mode = importModeSelect.value;
     if (mode !== spectrumMode) {
@@ -1205,25 +1225,32 @@
       modeSelect.value = mode;
     }
 
-    var rows = found.rows.slice().sort(function (a, b) { return a[xCol] - b[xCol]; });
-    var xNm = rows.map(function (r) { return convertToNm(r[xCol], unit); });
     var yCols = [];
     for (var c = 0; c < found.numCols; c++) { if (c !== xCol) yCols.push(c); }
 
     var touchedIds = [];
     var labels = [];
     var firstRow = null;
+    var createdCount = 0;
 
-    yCols.forEach(function (col, idx) {
-      var y = rows.map(function (r) { return r[col]; });
+    yCols.forEach(function (col) {
+      var pairs = found.rows
+        .filter(function (r) { return r[xCol] != null && r[col] != null; })
+        .map(function (r) { return [r[xCol], r[col]]; })
+        .sort(function (a, b) { return a[0] - b[0]; });
+      if (!pairs.length) return;
+
+      var xNm = pairs.map(function (pr) { return convertToNm(pr[0], unit); });
+      var y = pairs.map(function (pr) { return pr[1]; });
+
       var headerName = p.headers && p.headers[col] ? p.headers[col] : null;
-      var label = headerName || (yCols.length > 1 ? "Sample " + (idx + 1) : p.sourceLabel);
-      labels.push(label);
+      var label = headerName || (yCols.length > 1 ? "Sample " + (createdCount + 1) : p.sourceLabel);
+      labels.push(label + " (" + y.length + " pts)");
 
       var targetDs, targetRow;
-      if (idx === 0 && p.target) {
+      if (createdCount === 0 && p.target) {
         targetDs = p.target.ds; targetRow = p.target.row;
-      } else if (idx === 0 && !p.target) {
+      } else if (createdCount === 0 && !p.target) {
         var emptyDs = findEmptyDataset();
         if (emptyDs) {
           targetDs = emptyDs; targetRow = datasetsContainer.querySelector('[data-ds-id="' + emptyDs.id + '"]');
@@ -1237,7 +1264,7 @@
       }
 
       if (!firstRow) firstRow = targetRow;
-      targetDs.xNm = xNm.slice();
+      targetDs.xNm = xNm;
       targetDs.y = y;
       targetDs.colUnit = unit;
       targetDs.source = p.source;
@@ -1246,13 +1273,15 @@
       var legendEl = targetRow.querySelector('[data-role="legend"]');
       if (!legendEl.value.trim()) legendEl.value = label;
       targetDs.label = legendEl.value;
+      createdCount++;
     });
 
+    if (!createdCount) return;
     removeStaleExampleRows(touchedIds);
 
-    var msg = yCols.length > 1
-      ? "Loaded " + yCols.length + " spectra from " + p.sourceLabel + " (" + labels.join(", ") + "), " + rows.length + " points each."
-      : "Loaded " + p.sourceLabel + " (" + rows.length + " points).";
+    var msg = createdCount > 1
+      ? "Loaded " + createdCount + " spectra from " + p.sourceLabel + " (" + labels.join(", ") + ")."
+      : "Loaded " + p.sourceLabel + " (" + labels[0] + ").";
     setRowStatus(firstRow, msg, false);
 
     closeImportModal();
