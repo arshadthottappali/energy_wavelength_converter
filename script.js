@@ -1028,8 +1028,10 @@
     return cells.length >= 2 && cells.every(function (c) { return c !== "" && isFinite(parseFloat(c)); });
   }
 
-  function parseCsvWide(text) {
-    var lines = text.split(/\r\n|\n|\r/).map(function (l) { return l.trim(); }).filter(function (l) { return l.length > 0; });
+  function parseCsvWide(text, skipRows) {
+    var rawLines = text.split(/\r\n|\n|\r/);
+    if (skipRows > 0) rawLines = rawLines.slice(skipRows);
+    var lines = rawLines.map(function (l) { return l.trim(); }).filter(function (l) { return l.length > 0; });
     var splitLine = function (line) { return line.split(/[,\t;]/).map(function (s) { return s.trim(); }); };
     if (!lines.length) return { headers: null, rows: [] };
 
@@ -1112,7 +1114,9 @@
   function loadFileIntoRow(file, ds, row, colUnitSelect) {
     var reader = new FileReader();
     reader.onload = function () {
-      var parsed = parseCsvWide(String(reader.result));
+      var skipRowsInput = row.querySelector('[data-role="skip-rows"]');
+      var skipRows = skipRowsInput ? parseInt(skipRowsInput.value, 10) || 0 : 0;
+      var parsed = parseCsvWide(String(reader.result), skipRows);
       if (parsed.rows.length) colUnitSelect.value = guessColumnUnit(parsed.rows);
       var result = loadWideIntoDatasets(ds, row, parsed, colUnitSelect.value, file.name, "file");
       setRowStatus(row, result.msg, !result.ok);
@@ -1478,6 +1482,7 @@
     var pasteToggleBtn = row.querySelector('[data-role="paste-toggle-btn"]');
     var pasteTextarea = row.querySelector('[data-role="paste-textarea"]');
     var pasteLoadBtn = row.querySelector('[data-role="paste-load-btn"]');
+    var skipRowsInput = row.querySelector('[data-role="skip-rows"]');
     var colUnitSelect = row.querySelector('[data-role="col-unit"]');
     var offsetInput = row.querySelector('[data-role="offset"]');
     var subtractSelect = row.querySelector('[data-role="subtract"]');
@@ -1569,7 +1574,8 @@
     });
 
     pasteLoadBtn.addEventListener("click", function () {
-      var parsed = parseCsvWide(pasteTextarea.value);
+      var skipRows = parseInt(skipRowsInput.value, 10) || 0;
+      var parsed = parseCsvWide(pasteTextarea.value, skipRows);
       if (parsed.rows.length) colUnitSelect.value = guessColumnUnit(parsed.rows);
       var result = loadWideIntoDatasets(ds, row, parsed, colUnitSelect.value, "pasted data", "paste");
       setRowStatus(row, result.msg, !result.ok);

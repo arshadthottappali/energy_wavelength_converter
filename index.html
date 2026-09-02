@@ -464,6 +464,10 @@
           </label>
           <button type="button" data-role="paste-toggle-btn" class="btn btn-secondary">Paste data</button>
           <button type="button" data-role="edit-data-btn" class="btn btn-secondary" title="View, edit, or remove individual data points">Edit data</button>
+          <label class="field" title="Skip this many lines at the top of the file or pasted text before looking for data — use it if your instrument export starts with parameter/metadata rows">
+            <span>Skip rows</span>
+            <input type="number" data-role="skip-rows" value="0" min="0" step="1">
+          </label>
           <label class="field">
             <span>Column 1 is</span>
             <select data-role="col-unit">
@@ -708,6 +712,6 @@
   <button type="button" id="spectra-undo-btn" class="btn btn-secondary">Undo</button>
 </div>
 
-<script src="script.js?v=20260828a"></script>
+<script src="script.js?v=20260828b"></script>
 </body>
 </html>
