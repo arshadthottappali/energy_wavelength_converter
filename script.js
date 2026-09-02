@@ -1649,6 +1649,9 @@
     lineStyleSelect.value = ds.lineStyle;
     fillAreaInput.checked = ds.fillArea;
 
+    var addDataMenu = row.querySelector(".spectra-actions-menu");
+    if (addDataMenu) wireActionsMenu(addDataMenu);
+
     function renderPeaksList() {
       var y = displayY(ds);
       var candidates = findPeaks(y, parseFloat(peaksSensitivity.value));
@@ -2162,7 +2165,7 @@
     });
   });
 
-  document.querySelectorAll(".spectra-actions-menu").forEach(function (menu) {
+  function wireActionsMenu(menu) {
     menu.addEventListener("toggle", function () {
       var panel = menu.querySelector(".spectra-actions-menu-panel");
       if (!panel) return;
@@ -2176,7 +2179,9 @@
         }
       });
     });
-  });
+  }
+
+  document.querySelectorAll(".spectra-actions-menu").forEach(wireActionsMenu);
 
   function loadDefaultDemoView() {
     var first = addDataset();

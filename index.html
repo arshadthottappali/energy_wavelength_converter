@@ -531,13 +531,21 @@
     <template id="spectra-dataset-row-template">
       <div class="spectra-dataset-row">
         <div class="spectra-row-strip">
+          <label class="spectra-checkbox-field">
+            <input type="checkbox" data-role="visible" checked> Visible
+          </label>
           <input type="color" data-role="color" class="spectra-color-input" aria-label="Trace color">
           <input type="text" data-role="legend" class="spectra-legend-input" placeholder="Legend label" aria-label="Legend label">
-          <label class="file-btn">
-            Upload CSV
-            <input type="file" data-role="file-input" accept=".csv,.tsv,.txt,text/csv" hidden>
-          </label>
-          <button type="button" data-role="paste-toggle-btn" class="btn btn-secondary">Paste data</button>
+          <details class="spectra-actions-menu">
+            <summary class="btn btn-secondary">Add data ▾</summary>
+            <div class="spectra-actions-menu-panel">
+              <label class="file-btn">
+                Upload CSV
+                <input type="file" data-role="file-input" accept=".csv,.tsv,.txt,text/csv" hidden>
+              </label>
+              <button type="button" data-role="paste-toggle-btn" class="btn btn-secondary">Paste data</button>
+            </div>
+          </details>
           <button type="button" data-role="edit-data-btn" class="btn btn-secondary" title="View, edit, or remove individual data points">Edit data</button>
           <label class="field">
             <span>Column 1 is</span>
@@ -575,14 +583,11 @@
               <option value="dotted">Dotted</option>
             </select>
           </label>
-          <label class="spectra-checkbox-field">
-            <input type="checkbox" data-role="visible" checked> Visible
-          </label>
           <label class="spectra-checkbox-field" title="Shade the area under the curve">
             <input type="checkbox" data-role="fill-area"> Fill area
           </label>
           <button type="button" data-role="find-peaks-btn" class="btn btn-secondary" title="Detect local maxima and mark chosen ones on the chart">Find peaks</button>
-          <button type="button" data-role="download-btn" class="btn btn-secondary">CSV</button>
+          <button type="button" data-role="download-btn" class="btn btn-secondary">Download CSV</button>
           <button type="button" data-role="remove-btn" class="btn btn-secondary spectra-remove-btn">Remove</button>
         </div>
         <textarea data-role="paste-textarea" class="spectra-paste-textarea" hidden placeholder="Paste columns copied from Excel: wavelength, then one or more sample columns. Extra columns become their own spectrum."></textarea>
@@ -783,6 +788,6 @@
   <button type="button" id="spectra-undo-btn" class="btn btn-secondary">Undo</button>
 </div>
 
-<script src="script.js?v=20260828d"></script>
+<script src="script.js?v=20260828e"></script>
 </body>
 </html>
